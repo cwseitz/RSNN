@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.stats import bernoulli
 from scipy import sparse
 import time
@@ -38,17 +39,20 @@ class ConnectivityMatrix:
 		#column_ind=np.random.randint(0,high=self.N,size=N2bar)
 
 		rv=bernoulli(1).rvs
-		indexes=sparse.find(sparse.random(self.N,self.N,density=self.c,data_rvs=rv))
+		mat = sparse.random(self.N,self.N,density=self.c,data_rvs=rv)
+		indexes = sparse.find(mat)			
 
 		row_ind=indexes[0]
 		column_ind=indexes[1]
-		N2bar = len(indexes[1])
+		N2bar = len(indexes[1]) #number of nonzero entries
 		print( 'Structural connectivity created')
 
-		dN=300000
-		n=N2bar/dN
+		dN=1
+		n=int(N2bar/dN)
+		print(n, N2bar, dN)
 		connectivity=np.array([])
 		for l in range(n):
+
 			# fast way to write down the outer product learning
 			con_chunk=np.einsum('ij,ij->j',patterns_post[:,row_ind[l*dN:(l+1)*dN]],patterns_pre[:,column_ind[l*dN:(l+1)*dN]])
 			connectivity=np.concatenate((connectivity,con_chunk),axis=0)
@@ -61,5 +65,4 @@ class ConnectivityMatrix:
 
 		connectivity=sparse.csr_matrix((connectivity,(row_ind,column_ind)),shape=(self.N,self.N))
 		print( 'connectivity created')
-
 		return connectivity

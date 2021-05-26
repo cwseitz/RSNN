@@ -54,37 +54,44 @@ print('xf=',lr.xf)
 print('bf=',lr.betaf)
 
 
-
 # number of realizations
 #connectivity
-paramSim = [50000,0.005,p] #N,c,p=
+paramSim = [500,0.005,p] #N,c,p=
 random_seed = 7 # random seed connectivity
 conn = ConnectivityMatrix(lr,tf,paramSim,random_seed)
 
-# matrix = conn.connectivity_generalized_hebbian()
-# # dynamics
-# patterns_current = conn.patterns_current
+matrix = conn.connectivity_generalized_hebbian()
 
-# the_overlaps = []
-# the_dynamics = []
-# n_real = 10 # number of realizations
-# i=0
-# while i<=n_real:
-# #for i in range(100):
-# 	dyn = NetworkDynamics(lr,tf,matrix,patterns_current)
-# 	u_init = np.random.normal(0,1,paramSim[0])
-# 	q,m,sol = dyn.DMS(2500,500,6000,u_init)
-# 	#u_init = patterns_current[0]
-# 	#q,m,sol = dyn.DMS_Short(500,3000,u_init)
-# 	print('Value end m:',m[-1,0])
-# 	print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-# 	print('The value of i=',i)
-# 	print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-# 	if 0.2<m[-1,0]:
-# 		the_dynamics.append(sol)
-# 		pickle.dump(the_dynamics,open('overlaps/the_dynamics.p','wb'))
-# 		i+=1
-#
-#
+# dynamics
+patterns_current = conn.patterns_current
+
+the_overlaps = []
+the_dynamics = []
+n_real = 1 # number of realizations
+i=0
+while i<=n_real:
+#for i in range(100):
+
+	print(f'Running realization {i}')
+	dyn = NetworkDynamics(lr,tf,matrix,patterns_current)
+	u_init = np.random.normal(0,1,paramSim[0])
+	q,m,sol = dyn.DMS(2500,500,6000,u_init)
+
+	u_init = patterns_current[0]
+	q,m,sol = dyn.DMS_Short(500,3000,u_init)
+	plt.plot(sol)
+	plt.show()
+
+	i+=1
+	# print('Value end m:',m[-1,0])
+	# print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+	# print('The value of i=',i)
+	# print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+	# if 0.2<m[-1,0]:
+	# 	the_dynamics.append(sol)
+	# 	pickle.dump(the_dynamics,open('overlaps/the_dynamics.p','wb'))
+	# 	i+=1
+
+
 # the_overlaps.append(m)
 # pickle.dump(the_overlaps,open('overlaps/the_overlaps.p','wb'))

@@ -33,7 +33,6 @@ class NetworkDynamics:
 		q_ord_param=[] # overlap
 		m_ord_param=[] # normalized overlap
 
-
 		mysol.append(un[0:n_neurons])
 		overlap=np.array([np.mean(np.multiply(self.myLR.g(patterns_fr[i,:]),un)) for i in range(p)])
 
@@ -46,6 +45,8 @@ class NetworkDynamics:
 			#else:
 			#	self.Input = 0.
 			un=un+self.dt*self.fieldDynamics(un,t)
+
+
 			t=t+self.dt
 			mysol.append(un[0:n_neurons])
 
@@ -53,7 +54,7 @@ class NetworkDynamics:
 			overlap=np.array([np.mean(np.multiply(self.myLR.g(patterns_fr[i,:]),un)) for i in range(p)])
 			q_ord_param.append(overlap)
 			m_ord_param.append(overlap/(np.sqrt(self.myLR.intg2)*np.std(un)))
-			print('t',t,'of',T)
+			# print('t',t,'of',T)
 
 		return np.array(q_ord_param),np.array(m_ord_param),np.array(mysol),un
 
