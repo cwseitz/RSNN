@@ -4,65 +4,49 @@ from scipy.stats import bernoulli
 from scipy import sparse
 import time
 
-class ConnectivityMatrix:
-	'''This class creates the connectivity matrix'''
+class ConnectivityMatrix():
 
-	def __init__(self,LR,TF,param_net,random_seed):
-		np.random.seed(random_seed) # fixed the seed
+	def __init__(self,lr,tf,units,c,p,seed=7):
 
-		#tranfer function and learning rule
-		self.myTF=TF
-		self.myLR=LR
+		np.random.seed(seed)
+		self.tf=tf
+		self.lr=lr
 
-		# parameters for the dynamics
-		self.N=int(param_net[0])
-		self.c=param_net[1]
-		self.p=int(param_net[2])
+		self.units=units
+		self.c=c
+		self.p=int(p)
+		self.value=np.array([])
+		self.mask()
 
-		self.patterns_current = np.random.normal(0.,1., size=(self.p,self.N))
-		self.patterns_fr = self.myTF.TF(self.patterns_current)
-
-	def seed(self,semilla):
-		np.random.seed(semilla)
-		self.patterns_current = np.random.normal(0.,1., size=(self.p,self.N))
-		self.patterns_fr = self.myTF.TF(self.patterns_current)
-
-	def connectivity_generalized_hebbian(self):
-
-		patterns_pre=self.myLR.g(self.patterns_fr)
-		patterns_post=self.myLR.f(self.patterns_fr)
-
-		print('Patterns created. N patterns:',self.p)
-		#number of entries different than zero
-		#N2bar=np.random.binomial(self.N*self.N,self.c)
-		#row_ind=np.random.randint(0,high=self.N,size=N2bar)
-		#column_ind=np.random.randint(0,high=self.N,size=N2bar)
+	def mask(self):
 
 		rv=bernoulli(1).rvs
-		mat = sparse.random(self.N,self.N,density=self.c,data_rvs=rv)
-		indexes = sparse.find(mat)			
+		self.mask = sparse.random(self.units,self.units,density=self.c,data_rvs=rv)
+		self.mask_ind = sparse.find(self.mask)
 
-		row_ind=indexes[0]
-		column_ind=indexes[1]
-		N2bar = len(indexes[1]) #number of nonzero entries
-		print( 'Structural connectivity created')
+	def train(self, train_stim):
+
+		train_fr = self.tf.TF(train_stim)
+		patterns_pre=self.lr.g(train_fr)
+		patterns_post=self.lr.f(train_fr)
+
+		row_ind=self.mask_ind[0]
+		column_ind=self.mask_ind[1]
+		N2bar = len(self.mask_ind[1]) #number of nonzero entries
 
 		dN=1
 		n=int(N2bar/dN)
-		print(n, N2bar, dN)
-		connectivity=np.array([])
-		for l in range(n):
 
-			# fast way to write down the outer product learning
+		for l in range(n):
 			con_chunk=np.einsum('ij,ij->j',patterns_post[:,row_ind[l*dN:(l+1)*dN]],patterns_pre[:,column_ind[l*dN:(l+1)*dN]])
-			connectivity=np.concatenate((connectivity,con_chunk),axis=0)
+			self.value=np.concatenate((self.value,con_chunk),axis=0)
 			print( 'Synaptic weights created:',100.*(l)/float(n),'%')
+
 		con_chunk=np.einsum('ij,ij->j',patterns_post[:,row_ind[n*dN:N2bar]],patterns_pre[:,column_ind[n*dN:N2bar]])
 		print( 'Synaptic weights created:',100.,'%')
-		connectivity=np.concatenate((connectivity,con_chunk),axis=0)
-		connectivity=(self.myLR.Amp/(self.c*self.N))*connectivity
+		self.value=np.concatenate((self.value,con_chunk),axis=0)
+		self.value=(self.lr.Amp/(self.c*self.units))*self.value
 		print( 'Synaptic weights created')
 
-		connectivity=sparse.csr_matrix((connectivity,(row_ind,column_ind)),shape=(self.N,self.N))
+		self.value=sparse.csr_matrix((self.value,(row_ind,column_ind)),shape=(self.units,self.units))
 		print( 'connectivity created')
-		return connectivity

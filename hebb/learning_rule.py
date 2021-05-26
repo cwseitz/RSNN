@@ -5,7 +5,7 @@ from scipy.optimize import brentq
 
 
 class LearningRule:
-	''' This class gives the learning rule'''
+
 	def __init__(self,paramsLR,TF):
 
 		self.myTF=TF
@@ -21,17 +21,15 @@ class LearningRule:
 		self.qg=self.Qg()
 		self.intg2=self.Eg2()
 		self.intf2=self.Ef2()
-		#print 'Amp',self.Amp,myint
 		self.gamma=self.intf2*self.intg2*self.Amp*self.Amp
 
 
 	def std_normal(self,x):
-		sigma=1. # standard normal random variable passed thorugh transfer functiion
+		sigma=1.
 		mu=0
 		pdf=(1./np.sqrt(2 * np.pi * sigma**2))*np.exp(-(1./2.)*((x-mu)/sigma)**2)
 		return pdf
 
-	# separable functions learning process leanring rule f and g
 	def f(self,x):
 		return 0.5*(2*self.qf-1.+np.tanh(self.betaf*(x-self.xf)))
 

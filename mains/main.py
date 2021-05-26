@@ -3,95 +3,52 @@ from hebb.learning_rule import *
 from hebb.connectivity import *
 from hebb.transfer_function import *
 from hebb.network_dynamics import *
-import pickle
+from hebb.load import load
 import multiprocessing as mt
 import matplotlib.pyplot as plt
 import os
-directory = 'overlaps'
-if not os.path.exists(directory):
-	    os.makedirs(directory)
 
-# fixed-point or chaotic attractors as retrival state
+#fixed-point or chaotic attractors as retrival state
 TypeDynamics = 'chaos'
 #TypeDynamics = 'fixedpoint'
-
-#importing parameters data
-f = open('../hebb/parametersFit.p','rb')
-paramfit = pickle.load(f, encoding='latin1')
-
-# using the median parameters of the fits
-rmax_median = np.median(paramfit[0][0])
-beta_median = np.median(paramfit[0][1])
-h0_median = np.median(paramfit[0][2])
-paramTF = ['sig',rmax_median,beta_median,h0_median] # param TF
-
-# transfer function
-tf = TransferFunction(paramTF)
-
-amp_median = np.median(paramfit[1][0])
-qf = np.median(paramfit[1][1])#0.65
-bf_median = np.median(paramfit[1][2])
-xf = np.median(paramfit[1][3])#22.
-paramLR = [xf,xf,bf_median,bf_median,qf,amp_median]  #learning rule
+tf_params, lr_params, amp_median = load()
 
 if  TypeDynamics =='chaos':
-	amp_median = 3 * amp_median
-	p =int(0.56 * 250)#70-80
+	amp_median *= 3
+	num_patterns =int(0.56 * 250)#70-80
 else:
 	amp_median = amp_median
-	p = 30
+	num_patterns = 30
 
+iters = 10
+units = 5000
+c = 0.005
+t1, t2, t3 = 2500,500,6000
 
-lr = LearningRule(paramLR,tf)
+#training stimulus
+train_stim = np.random.normal(0.,1.,size=(num_patterns,units))
 
-print('Parameter Values:')
-print('qg=',lr.qg)
-print('xg=',lr.xg)
-print('bg=',lr.betag)
-print('A=',lr.Amp)
-print('qf=',lr.qf)
-print('xf=',lr.xf)
-print('bf=',lr.betaf)
+#init objects
+tf = TransferFunction(tf_params)
+lr = LearningRule(lr_params,tf)
+conn = ConnectivityMatrix(lr,tf,units,c,num_patterns)
+conn.train(train_stim)
 
+for i in range(10):
 
-# number of realizations
-#connectivity
-paramSim = [500,0.005,p] #N,c,p=
-random_seed = 7 # random seed connectivity
-conn = ConnectivityMatrix(lr,tf,paramSim,random_seed)
+	print(f'Running iteration {i}')
 
-matrix = conn.connectivity_generalized_hebbian()
+	#zero stimulus
+	zero_stim = np.zeros((units,))
 
-# dynamics
-patterns_current = conn.patterns_current
+	#background period
+	rates1 = simulate(tf,conn.value,zero_stim,period=t1)
+	#presentation period
+	rates2 = simulate(tf,conn.value,train_stim[0],period=t2)
+	#delay period
+	rates3 = simulate(tf,conn.value,zero_stim,period=t3)
 
-the_overlaps = []
-the_dynamics = []
-n_real = 1 # number of realizations
-i=0
-while i<=n_real:
-#for i in range(100):
+	all_rates = np.concatenate((rates1, rates2, rates3),axis=0)
 
-	print(f'Running realization {i}')
-	dyn = NetworkDynamics(lr,tf,matrix,patterns_current)
-	u_init = np.random.normal(0,1,paramSim[0])
-	q,m,sol = dyn.DMS(2500,500,6000,u_init)
-
-	u_init = patterns_current[0]
-	q,m,sol = dyn.DMS_Short(500,3000,u_init)
-	plt.plot(sol)
+	plt.plot(all_rates[:, :100])
 	plt.show()
-
-	i+=1
-	# print('Value end m:',m[-1,0])
-	# print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-	# print('The value of i=',i)
-	# print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-	# if 0.2<m[-1,0]:
-	# 	the_dynamics.append(sol)
-	# 	pickle.dump(the_dynamics,open('overlaps/the_dynamics.p','wb'))
-	# 	i+=1
-
-
-# the_overlaps.append(m)
-# pickle.dump(the_overlaps,open('overlaps/the_overlaps.p','wb'))
