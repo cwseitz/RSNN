@@ -3,6 +3,7 @@ import numpy as np
 import powerlaw
 import os
 from plot import *
+from conn import *
 from glob import glob
 
 def clean_data_dir(save_dir='data/'):
@@ -10,6 +11,7 @@ def clean_data_dir(save_dir='data/'):
     files = glob(save_dir + '/*')
     for f in files:
         os.remove(f)
+
 def stack_tensors(save_dir='data/'):
 
     files = glob(save_dir + '*.npz')

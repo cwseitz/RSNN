@@ -1,6 +1,14 @@
 import numpy as np
 import tensorflow as tf
 
+def activity(spikes):
+
+	trial_idx, seq_len, units = spikes.shape
+	a = tf.reduce_sum(spikes, axis=-1)
+
+	return a
+
+
 def branch_param(spikes, lag=0, tau=1):
 
 	trial_idx, seq_len, units = spikes.shape

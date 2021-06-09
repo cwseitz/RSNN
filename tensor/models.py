@@ -71,10 +71,11 @@ def SpikeFunction(v_scaled, dampening_factor):
 
 
 class LightLIF(Cell):
-    def __init__(self, n_in, n_rec, tau=20., thr=0.615, dt=1., dtype=tf.float32, dampening_factor=0.3,
-                 stop_z_gradients=False):
+    def __init__(self, n_in, n_rec, in_weights, rec_weights, tau=20., thr=0.615,
+                 dt=1., dtype=tf.float32, dampening_factor=0.3, stop_z_gradients=False):
+
         '''
-        A tensorflow RNN cell model to simulate Learky Integrate and Fire (LIF) neurons.
+        A tensorflow RNN cell model to simulate Leaky Integrate and Fire (LIF) neurons.
 
         WARNING: This model might not be compatible with tensorflow framework extensions because the input and recurrent
         weights are defined with tf.Variable at creation of the cell instead of using variable scopes.
@@ -103,14 +104,24 @@ class LightLIF(Cell):
         self.thr = thr
 
         with tf.variable_scope('InputWeights'):
-            self.w_in_var = tf.Variable(np.random.randn(n_in, n_rec) / np.sqrt(n_in), dtype=dtype)
-            self.w_in_val = tf.identity(self.w_in_var)
+            self.w_in_conn = tf.Variable(in_weights.conn)
+            self.w_in_var = tf.Variable(in_weights.weights, dtype=dtype)
+            self.w_in_val = tf.multiply(self.w_in_conn, self.w_in_var)
+
+            #Force inputs to be positive
+            # self.w_in_val = tf.abs(self.w_in_val)
 
         with tf.variable_scope('RecWeights'):
-            self.w_rec_var = tf.Variable(np.random.randn(n_rec, n_rec) / np.sqrt(n_rec), dtype=dtype)
-            self.recurrent_disconnect_mask = np.diag(np.ones(n_rec, dtype=bool))
-            self.w_rec_val = tf.where(self.recurrent_disconnect_mask, tf.zeros_like(self.w_rec_var),
-                                      self.w_rec_var)  # Disconnect autotapse
+            self.w_rec_conn = tf.Variable(rec_weights.conn)
+            self.w_rec_var = tf.Variable(rec_weights.weights, dtype=dtype)
+            self.w_rec_val = tf.multiply(self.w_rec_conn, self.w_rec_var)
+
+            # #Force excitatory connections to be positive
+            # tf.slice(self.w_rec_val, [0, 0], [rec_weights.n_excite, self.w_rec_val.shape[1]]).assign(tf.math.abs(tf.slice(self.w_rec_val, [0, 0], [rec_weights.n_excite, rec_weights.weights.shape[0]])))
+            #
+            # #Force inhibitory connections to be negative
+            # tf.slice(self.w_rec_val, [rec_weights.n_excite, 0], [rec_weights.weights.shape[0]], rec_weights.weights.shape[1]).assign(tf.math.abs(tf.slice(self.w_rec_val, [0, 0], [rec_weights.n_excite, rec_weights.weights.shape[0]])))
+
 
     @property
     def state_size(self):
@@ -138,7 +149,7 @@ class LightLIF(Cell):
             z = tf.stop_gradient(z)
 
         # update the voltage
-        i_t = tf.matmul(inputs, self.w_in_val) + tf.matmul(z, self.w_rec_val)
+        i_t = tf.matmul(inputs, self.w_in_val) + tf.matmul(z, tf.transpose(self.w_rec_val))
         #i_t = inputs + tf.matmul(z, self.w_rec_val)
         I_reset = z * self.thr * self.dt
         new_v = decay * v + (1 - decay) * i_t - I_reset

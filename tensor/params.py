@@ -3,15 +3,15 @@ import tensorflow as tf
 tf.app.flags.DEFINE_integer('n_batch', 10, 'batch size of the testing set')
 
 tf.app.flags.DEFINE_integer('n_out', 1, 'number of output neurons (number of target curves)')
-tf.app.flags.DEFINE_integer('n_in', 100, 'number of input units')
+tf.app.flags.DEFINE_integer('n_in', 50, 'number of input units')
 tf.app.flags.DEFINE_integer('n_rec', 100, 'number of recurrent units')
 
-tf.app.flags.DEFINE_integer('f0', 50, 'input firing rate')
+tf.app.flags.DEFINE_integer('f0', 20, 'input firing rate')
 tf.app.flags.DEFINE_integer('reg_rate', 20, 'target rate for regularization')
 
-tf.app.flags.DEFINE_integer('n_iter', 20, 'number of iterations')
+tf.app.flags.DEFINE_integer('n_iter', 100, 'number of iterations')
 tf.app.flags.DEFINE_integer('seq_len', 1000, 'number of time steps per sequence')
-tf.app.flags.DEFINE_integer('print_every', 1, 'print statistics every K iterations')
+tf.app.flags.DEFINE_integer('print_every', 10, 'print statistics every K iterations')
 
 tf.app.flags.DEFINE_float('dampening_factor', 0.3, 'dampening factor to stabilize learning in RNNs')
 tf.app.flags.DEFINE_float('learning_rate', 0.1, 'learning rate')
