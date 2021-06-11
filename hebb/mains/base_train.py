@@ -31,10 +31,10 @@ rec_cmg.run_generator()
 in_cmg = InputConnectivityGenerator(FLAGS.n_in, FLAGS.n_rec)
 in_cmg.run_generator()
 
-cell = LightLIF(n_in=FLAGS.n_in, n_rec=FLAGS.n_rec, in_weights=in_cmg,
-                rec_weights=rec_cmg,tau=tau_m, thr=thr,dt=dt,
-                dampening_factor=FLAGS.dampening_factor,stop_z_gradients=FLAGS.stop_z_gradients)
-
+cell = ExInLIF(n_in=FLAGS.n_in, n_rec=FLAGS.n_rec,
+                tau=tau_m, thr=thr,dt=dt, p_e=0.2,
+                dampening_factor=FLAGS.dampening_factor,
+                stop_z_gradients=FLAGS.stop_z_gradients)
 
 frozen_poisson_noise_input = np.random.rand(FLAGS.n_batch, FLAGS.seq_len, FLAGS.n_in) < dt * input_f0
 input = tf.constant(frozen_poisson_noise_input, dtype=tf.float32)
@@ -43,42 +43,49 @@ input = tf.constant(frozen_poisson_noise_input, dtype=tf.float32)
 outs, final_state = tf.nn.dynamic_rnn(cell, input, dtype=tf.float32)
 z, v = outs
 
-with tf.name_scope('RegularizationLoss'):
+# with tf.name_scope('RegularizationLoss'):
+#
+#     target_rec_sign = tf.sign(rec_cmg.weights)
+#     rec_sign = tf.sign(cell.w_rec_val)
+#     rec_diff = tf.cast(tf.equal(target_rec_sign, rec_sign), tf.float32)
+#     rec_reg_loss = tf.reduce_mean(rec_diff)
+#
+#     #in_reg_loss = -tf.minimum(tf.reduce_min(cell.w_in_val),0)
+#
+#     target_in_sign = tf.sign(in_cmg.weights)
+#     in_sign = tf.sign(cell.w_in_val)
+#     in_diff = tf.cast(tf.equal(target_in_sign, in_sign), tf.float32)
+#     in_reg_loss = tf.reduce_mean(in_diff)
 
-    #This loss maintains the sign of inhibitory and excitatory units
-    wmat = np.ones([FLAGS.n_rec, FLAGS.n_rec])
-    wmat[n_excite:,:] = -1 * wmat[n_excite:,:]
-    wmat[np.where(rec_cmg.conn == 0)] = 0
-
-    rec_sign = tf.convert_to_tensor(wmat, dtype=tf.float32)
-    sign_error = 1-tf.cast(tf.equal(rec_sign, tf.sign(rec_cmg.weights)), tf.float32)
-    reg_loss = tf.reduce_mean(sign_error**2)
-
-
-    # diff = tf.multiply(rec_cmg.conn, rec_cmg.weights)
-    # reg_loss = tf.reduce_mean((rec_cmg.weights - diff)**2)
+    # in_diff = cell.w_in_val - in_cmg.weights
+    # rec_diff = cell.w_rec_val - rec_cmg.weights
+    # rec_reg_loss = 100*tf.reduce_mean(rec_diff**2)
+    # in_reg_loss = 100*tf.reduce_mean(in_diff**2)
 
 with tf.name_scope('SpikeRegularizationLoss'):
 
-    branching = branch_param(z)
-    av = tf.reduce_mean(z, axis=(0, 1)) / dt
-    num_spikes = tf.reduce_mean(z, axis=(0, 2))/dt
+    # branching = branch_param(z)
+    # num_spikes = tf.reduce_mean(z, axis=(0, 2))/dt
+    # branching_error = num_spikes-regularization_f0
+    # spike_loss_2 = 0.5 * tf.reduce_sum(branching_error ** 2)
+
+    av = tf.reduce_sum(z, axis=0)
     average_firing_rate_error = av - regularization_f0
-    branching_error = num_spikes-regularization_f0
+    spike_loss_1 = 100*tf.reduce_mean(average_firing_rate_error ** 2)
 
-    spike_loss_1 = 0.5 * tf.reduce_sum(average_firing_rate_error ** 2)
-    spike_loss_2 = 0.5 * tf.reduce_sum(branching_error ** 2)
-
-    spike_loss_loss = spike_loss_1 + spike_loss_2
-
-overall_loss = reg_loss + spike_loss_loss
+overall_loss = spike_loss_1
 v_scaled = (v - thr) / thr # voltage scaled to be 0 at threshold and -1 at rest
 post_term = pseudo_derivative(v_scaled, FLAGS.dampening_factor) / thr # non-linear function of the voltage
 z_previous_time = shift_by_one_time_step(z) # z(t-1) instead of z(t)
 
-# put the resulting gradients into lists
+#put the resulting gradients into lists
 var_list = [cell.w_in_var, cell.w_rec_var]
 true_gradients = tf.gradients(overall_loss, var_list)
+
+#Set gradients for unconnected neurons to zero
+# in_gradients, rec_gradients = true_gradients
+# in_gradients = tf.multiply(in_gradients, in_cmg.conn)
+#rec_gradients = tf.multiply(rec_gradients, rec_cmg.conn)
 
 #Optimizer
 with tf.name_scope("Optimization"):
@@ -92,17 +99,9 @@ sess.run(tf.global_variables_initializer())
 results_tensors = {
     'z': z,
     'v': v,
-    'av': av,
-    'spike_loss_1': spike_loss_1,
-    'spike_loss_2': spike_loss_2,
-    'reg_loss': reg_loss,
     'rec_weights': cell.w_rec_val,
     'in_weights': cell.w_in_val,
-    'rec_conn': cell.w_rec_conn,
-    'in_conn': cell.w_in_conn,
-    'input': input,
-    'num_spikes': num_spikes,
-    'branching': branching,
+    'input': input
 }
 
 
@@ -119,6 +118,7 @@ def train():
 
         if np.mod(k_iter, FLAGS.print_every) == 0:
             t0 = time()
+
             results_values = sess.run(results_tensors)
             save_tensors(results_values, str(k_iter), save_dir=save_dir)
             t_valid = time() - t0
