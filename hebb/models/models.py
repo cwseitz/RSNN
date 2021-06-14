@@ -6,7 +6,7 @@ import tensorflow as tf
 import numpy as np
 from collections import namedtuple
 
-Cell = tf.contrib.rnn.BasicRNNCell
+Cell = tf.compat.v1.nn.rnn_cell.BasicRNNCell
 ExInLIFStateTuple = namedtuple('ExInLIFStateTuple', ('v_e', 'v_i', 'z_e', 'z_i'))
 ExLIFStateTuple = namedtuple('ExLIFStateTuple', ('v_e','z_e'))
 
@@ -66,11 +66,11 @@ class ExInLIF(Cell):
         self._decay = tf.exp(-dt / self.tau)
         self.thr = thr
 
-        with tf.variable_scope('InputWeights'):
+        with tf.compat.v1.variable_scope('InputWeights'):
             self.w_e_in_var = tf.Variable(np.random.lognormal(mu, sigma, size=(self.n_in, self.n_excite)), dtype=dtype)
             self.w_e_in = tf.identity(self.w_e_in_var)
 
-        with tf.variable_scope('RecWeights'):
+        with tf.compat.v1.variable_scope('RecWeights'):
 
             self.w_ee_var = tf.Variable(np.random.lognormal(mu, sigma, size=(self.n_excite, self.n_excite)), dtype=dtype)
             self.w_ei_var = tf.Variable(np.random.lognormal(mu, sigma, size=(self.n_excite, self.n_inhib)), dtype=dtype)

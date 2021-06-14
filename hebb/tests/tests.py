@@ -1,6 +1,9 @@
 from ..models import *
 from ..util import *
 
+def tf_gpu_test():
+    pass
+
 def check_ex_in_conn_mat():
 
     n_excite = 80; n_inhib = 20; n_input = 10

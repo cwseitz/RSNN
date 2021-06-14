@@ -8,7 +8,8 @@ from hebb.util import *
 from hebb.models import *
 from hebb.config import params
 
-FLAGS = tf.app.flags.FLAGS
+tf.compat.v1.disable_eager_execution()
+FLAGS = tf.compat.v1.app.flags.FLAGS
 
 # Experiment parameters
 dt = 1  # time step in ms
@@ -16,7 +17,6 @@ input_f0 = FLAGS.f0 / 1000  # input firing rate in kHz in coherence with the usa
 regularization_f0 = 0.02  # desired firing rate in spikes/ms
 tau_m = tau_m_readout = 30
 thr = FLAGS.thr
-save_dir = '/home/cwseitz/Desktop/experiment/'
 
 
 cell = ExInLIF(n_in=FLAGS.n_in, n_rec=FLAGS.n_rec,
@@ -29,7 +29,7 @@ frozen_poisson_noise_input = np.random.rand(FLAGS.n_batch, FLAGS.seq_len, FLAGS.
 input = tf.constant(frozen_poisson_noise_input, dtype=tf.float32) #only to excitatory units
 
 #Tensorflow ops that simulates the RNN
-outs, final_state = tf.nn.dynamic_rnn(cell, input, dtype=tf.float32)
+outs, final_state = tf.compat.v1.nn.dynamic_rnn(cell, input, dtype=tf.float32)
 v_e, v_i, z_e, z_i = outs
 
 with tf.name_scope('SpikeRegularizationLoss'):
@@ -48,17 +48,17 @@ alpha, beta = 10, 10
 overall_loss = alpha*sl_1 + beta*sl_2
 var_list = [cell.w_e_in_var, cell.w_ee_var, cell.w_ei_var, cell.w_ie_var, cell.w_ii_var]
 
-true_gradients = tf.gradients(overall_loss, var_list)
+true_gradients = tf.compat.v1.gradients(overall_loss, var_list)
 w_e_in_grad, w_ee_grad, w_ei_grad, w_ie_grad, w_ii_grad = true_gradients
 
 #Optimizer
 with tf.name_scope("Optimization"):
-    opt = tf.train.GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
+    opt = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
     grads_and_vars = [(g, v) for g, v in zip(true_gradients, var_list)]
     train_step = opt.apply_gradients(grads_and_vars)
 
-sess = tf.Session()
-sess.run(tf.global_variables_initializer())
+sess = tf.compat.v1.Session()
+sess.run(tf.compat.v1.global_variables_initializer())
 
 results_tensors = {
     'sl_1': sl_1,
@@ -84,7 +84,6 @@ results_tensors = {
 def train():
 
     t_train = 0
-    clean_data_dir()
 
     for k_iter in range(FLAGS.n_iter):
         t0 = time()
@@ -94,9 +93,8 @@ def train():
 
         if np.mod(k_iter, FLAGS.print_every) == 0:
             t0 = time()
-
             results_values = sess.run(results_tensors)
-            save_tensors(results_values, str(k_iter), save_dir=save_dir)
+            save_tensors(results_values, str(k_iter), save_dir='data/')
             t_valid = time() - t0
 
 train()
