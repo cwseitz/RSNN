@@ -38,7 +38,35 @@ def avalanche_plot(spikes, iter=-1, batch=-1, color='blue'):
 
     powerlaw.plot_pdf(av_sizes, color=color)
 
-def weight_plot(w_ee, w_ei, w_ie, w_ii, w_e_in):
+def ex_weight_plot(w_ee, w_e_in):
+
+    fig, ax = plt.subplots(1, 3)
+
+    ax[0].imshow(w_ee, cmap='gray')
+    ax[0].set_title('W_EE', size=8)
+    ax[0].set_xlabel('Neuron')
+    ax[0].set_ylabel('Neuron')
+
+    ax[1].imshow(w_e_in, cmap='gray')
+    ax[1].set_title('W_IN', size=8)
+    ax[1].set_xlabel('Neuron')
+    ax[1].set_ylabel('Input')
+
+    w_ee = w_ee.flatten()
+    w_e_in = w_ee.flatten()
+
+    w_ee_vals, w_ee_bins = np.histogram(w_ee, bins=10, density=True)
+    w_e_in_vals, w_e_in_bins = np.histogram(w_e_in, bins=10, density=True)
+
+    ax[2].plot(w_ee_bins[:-1], w_ee_vals, color='red', label='W_EE')
+    ax[2].plot(w_e_in_bins[:-1], w_e_in_vals, color='blue', label='W_IN')
+    ax[2].set_xlabel('Synaptic weight (mV)')
+    ax[2].set_ylabel('Density')
+    ax[2].legend()
+
+    plt.tight_layout()
+
+def ex_in_weight_plot(w_ee, w_ei, w_ie, w_ii, w_e_in):
 
     fig, ax = plt.subplots(2, 3)
 
@@ -68,9 +96,9 @@ def weight_plot(w_ee, w_ei, w_ie, w_ii, w_e_in):
     ax[1,2].set_ylabel('Neuron')
 
     w_ee = w_ee.flatten()
-    w_ei = w_ee.flatten()
-    w_ie = w_ee.flatten()
-    w_ii = w_ee.flatten()
+    w_ei = w_ei.flatten()
+    w_ie = w_ie.flatten()
+    w_ii = w_ii.flatten()
 
     w_ee_vals, w_ee_bins = np.histogram(w_ee, bins=10, density=True)
     w_ei_vals, w_ei_bins = np.histogram(w_ei, bins=10, density=True)
@@ -197,26 +225,11 @@ def spike_plot(input, spikes, voltage):
 
     plt.tight_layout()
 
-def train_plot(spike_reg_1, spike_reg_2, reg):
+def train_plot(sl_1, sl_2):
 
-    fig, ax = plt.subplots()
-
-    ax.plot(spike_reg_1, color='red', label='L1')
-    ax.set_xlabel('Iteration')
-    ax.set_ylabel('Loss')
-
-    ax.plot(spike_reg_2, color='blue', label='L2')
-    ax.plot(reg, label='L3')
-    ax.legend()
-    ax.plot()
-
-    # ax[0,1].hist(1e3*rates, color='red')
-    # ax[0,1].set_xlabel('Firing Rate (Hz)')
-    # ax[0,1].set_ylabel('PDF')
-    #
-    # ax[1,1].plot(branching, color='black')
-    # ax[1,1].set_xlabel('Iteration')
-    # ax[1,1].set_ylabel('Branching')
-
+    fig, ax = plt.subplots(1,2)
+    ax[0].plot(sl_1, color='black', label='SL1')
+    ax[1].plot(sl_2, color='blue', label='SL2')
+    ax[0].legend()
+    ax[1].legend()
     plt.tight_layout()
-    plt.show()

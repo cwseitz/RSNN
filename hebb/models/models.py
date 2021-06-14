@@ -8,7 +8,7 @@ from collections import namedtuple
 
 Cell = tf.contrib.rnn.BasicRNNCell
 ExInLIFStateTuple = namedtuple('ExInLIFStateTuple', ('v_e', 'v_i', 'z_e', 'z_i'))
-
+ExLIFStateTuple = namedtuple('ExLIFStateTuple', ('v_e','z_e'))
 
 def pseudo_derivative(v_scaled, dampening_factor):
     '''
@@ -67,22 +67,24 @@ class ExInLIF(Cell):
         self.thr = thr
 
         with tf.variable_scope('InputWeights'):
-            self.w_e_in = tf.Variable(np.random.lognormal(mu, sigma, size=(self.n_in, self.n_excite)), dtype=dtype)
-            #self.w_i_in = tf.Variable(np.random.lognormal(mu, sigma, size=(self.n_inhib, self.n_in)), dtype=dtype)
+            self.w_e_in_var = tf.Variable(np.random.lognormal(mu, sigma, size=(self.n_in, self.n_excite)), dtype=dtype)
+            self.w_e_in = tf.identity(self.w_e_in_var)
 
         with tf.variable_scope('RecWeights'):
 
-            self.w_ee = tf.Variable(np.random.lognormal(mu, sigma, size=(self.n_excite, self.n_excite)), dtype=dtype)
-            self.w_ei = tf.Variable(np.random.lognormal(mu, sigma, size=(self.n_excite, self.n_inhib)), dtype=dtype)
-            self.w_ie = tf.Variable(np.random.lognormal(mu, sigma, size=(self.n_inhib, self.n_excite)), dtype=dtype)
-            self.w_ii = tf.Variable(np.random.lognormal(mu, sigma, size=(self.n_inhib, self.n_inhib)), dtype=dtype)
+            self.w_ee_var = tf.Variable(np.random.lognormal(mu, sigma, size=(self.n_excite, self.n_excite)), dtype=dtype)
+            self.w_ei_var = tf.Variable(np.random.lognormal(mu, sigma, size=(self.n_excite, self.n_inhib)), dtype=dtype)
+            self.w_ie_var = tf.Variable(5*np.random.lognormal(mu, sigma, size=(self.n_inhib, self.n_excite)), dtype=dtype)
+            self.w_ii_var = tf.Variable(5*np.random.lognormal(mu, sigma, size=(self.n_inhib, self.n_inhib)), dtype=dtype)
 
             self.w_ee_disconnect_mask = np.diag(np.ones(self.n_excite, dtype=bool))
             self.w_ii_disconnect_mask = np.diag(np.ones(self.n_inhib, dtype=bool))
 
             #Disconnect autotapse
-            self.w_ee = tf.Variable(tf.where(self.w_ee_disconnect_mask, tf.zeros_like(self.w_ee), self.w_ee))
-            self.w_ii = tf.Variable(tf.where(self.w_ii_disconnect_mask, tf.zeros_like(self.w_ii), self.w_ii))
+            self.w_ee = tf.where(self.w_ee_disconnect_mask, tf.zeros_like(self.w_ee_var), self.w_ee_var)
+            self.w_ii = tf.where(self.w_ii_disconnect_mask, tf.zeros_like(self.w_ii_var), self.w_ii_var)
+            self.w_ei = tf.identity(self.w_ei_var)
+            self.w_ie = tf.identity(self.w_ie_var)
 
 
     @property
@@ -111,10 +113,6 @@ class ExInLIF(Cell):
         v_i = state.v_i
         decay = self._decay
 
-        # if self.stop_z_gradients:
-        #     z_e = tf.stop_gradient(z_e)
-        #     z_i = tf.stop_gradient(z_i)
-
         #Voltage update - assume everything is a row vector
         i_e = tf.matmul(inputs, self.w_e_in) + tf.matmul(z_e, self.w_ee) - tf.matmul(z_i, self.w_ie)
         i_i = tf.matmul(z_e, self.w_ei) - tf.matmul(z_i, self.w_ii)
@@ -136,8 +134,92 @@ class ExInLIF(Cell):
 
         new_state = ExInLIFStateTuple(v_e=new_v_e, v_i=new_v_i, z_e=new_z_e, z_i=new_z_i)
 
-        return [new_z_e, new_z_i, new_v_e, new_v_i], new_state
+        return [new_v_e, new_v_i, new_z_e, new_z_i], new_state
 
+
+class ExLIF(Cell):
+    def __init__(self, n_in, n_rec, tau=20., thr=0.615,
+                 dt=1., dtype=tf.float32, dampening_factor=0.3,
+                 mu=-0.64, sigma=0.5, stop_z_gradients=False):
+
+        '''
+        A tensorflow RNN cell model to simulate Leaky Integrate and Fire (LIF) neurons.
+        '''
+
+        self.dampening_factor = dampening_factor
+        self.dt = dt
+        self.n_in = n_in
+        self.n_rec = n_rec
+        self.data_type = dtype
+        self.stop_z_gradients = stop_z_gradients
+
+        self._num_units = self.n_rec
+
+        self.tau = tf.constant(tau, dtype=dtype)
+        self._decay = tf.exp(-dt / self.tau)
+        self.thr = thr
+
+        with tf.variable_scope('InputWeights'):
+            self.w_e_in_var = tf.Variable(np.random.randn(n_in, n_rec) / np.sqrt(n_in), dtype=dtype)
+            self.w_e_in = tf.identity(self.w_e_in_var)
+
+        with tf.variable_scope('RecWeights'):
+            self.w_ee_var = tf.Variable(np.random.randn(n_rec, n_rec) / np.sqrt(n_rec), dtype=dtype)
+            self.recurrent_disconnect_mask = np.diag(np.ones(n_rec, dtype=bool))
+            self.w_ee = tf.where(self.recurrent_disconnect_mask, tf.zeros_like(self.w_ee_var),
+                                      self.w_ee_var)  # Disconnect autotapse
+
+        # with tf.variable_scope('InputWeights'):
+        #     self.w_e_in = tf.Variable(np.random.lognormal(mu, sigma, size=(self.n_in, self.n_rec)), dtype=dtype)
+        #
+        # with tf.variable_scope('RecWeights'):
+        #
+        #     self.w_ee = tf.Variable(np.random.lognormal(mu, sigma, size=(self.n_rec, self.n_rec)), dtype=dtype)
+        #     self.w_ee_disconnect_mask = np.diag(np.ones(self.n_rec, dtype=bool))
+        #
+        #     #Disconnect autotapse
+        #     self.w_ee = tf.Variable(tf.where(self.w_ee_disconnect_mask, tf.zeros_like(self.w_ee), self.w_ee))
+
+
+    @property
+    def state_size(self):
+        return ExLIFStateTuple(v_e=self.n_rec, z_e=self.n_rec)
+
+    @property
+    def output_size(self):
+        return [self.n_rec, self.n_rec]
+
+    def zero_state(self, batch_size, dtype):
+
+        v_e0 = tf.zeros(shape=(batch_size, self.n_rec), dtype=dtype)
+        z_e0 = tf.zeros(shape=(batch_size, self.n_rec), dtype=dtype)
+
+        return ExLIFStateTuple(v_e=v_e0, z_e=z_e0)
+
+    def __call__(self, inputs, state, scope=None, dtype=tf.float32):
+        thr = self.thr
+        z_e = state.z_e
+        v_e = state.v_e
+        decay = self._decay
+
+        # if self.stop_z_gradients:
+        #     z_e = tf.stop_gradient(z_e)
+        #     z_i = tf.stop_gradient(z_i)
+
+        #Voltage update - assume everything is a row vector
+        i_e = tf.matmul(inputs, self.w_e_in) + tf.matmul(z_e, self.w_ee)
+        i_e_reset = z_e * self.thr * self.dt
+        new_v_e = decay * v_e + (1 - decay) * i_e - i_e_reset
+
+        #Spike generation
+        v_e_scaled = (new_v_e - thr) / thr
+
+        new_z_e = SpikeFunction(v_e_scaled, self.dampening_factor)
+        new_z_e = new_z_e * 1 / self.dt
+
+        new_state = ExLIFStateTuple(v_e=new_v_e, z_e=new_z_e)
+
+        return [new_z_e, new_v_e], new_state
 
 # class LightLIF(Cell):
 #     def __init__(self, n_in, n_rec, tau=20., thr=0.615,
