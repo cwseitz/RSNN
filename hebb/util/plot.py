@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-import powerlaw
+# import powerlaw
 import numpy as np
 from matplotlib import cm
 from .util import *
@@ -24,19 +24,19 @@ def activity_plot(input, spikes):
     plt.show()
 
 
-def avalanche_plot(spikes, iter=-1, batch=-1, color='blue'):
-
-    iters, batches, seq_len, units = spikes.shape
-    map = cm.get_cmap('coolwarm')
-    colors = map(np.linspace(0, 1, iters))
-
-    spikes = spikes[iter][batch]
-    counts_per_frame = get_counts_per_frame(spikes)
-    av_sizes = get_avalanche_sizes(spikes)
-
-    fit = powerlaw.Fit(av_sizes)
-
-    powerlaw.plot_pdf(av_sizes, color=color)
+# def avalanche_plot(spikes, iter=-1, batch=-1, color='blue'):
+#
+#     iters, batches, seq_len, units = spikes.shape
+#     map = cm.get_cmap('coolwarm')
+#     colors = map(np.linspace(0, 1, iters))
+#
+#     spikes = spikes[iter][batch]
+#     counts_per_frame = get_counts_per_frame(spikes)
+#     av_sizes = get_avalanche_sizes(spikes)
+#
+#     fit = powerlaw.Fit(av_sizes)
+#
+#     powerlaw.plot_pdf(av_sizes, color=color)
 
 def ex_weight_plot(w_ee, w_e_in):
 
@@ -58,7 +58,7 @@ def ex_weight_plot(w_ee, w_e_in):
     w_ee_vals, w_ee_bins = np.histogram(w_ee, bins=10, density=True)
     w_e_in_vals, w_e_in_bins = np.histogram(w_e_in, bins=10, density=True)
 
-    ax[2].plot(w_ee_bins[:-1], w_ee_vals, color='red', label='W_EE')
+    ax[2].plot(w_ee_bins[:-1], w_ee_valands, color='red', label='W_EE')
     ax[2].plot(w_e_in_bins[:-1], w_e_in_vals, color='blue', label='W_IN')
     ax[2].set_xlabel('Synaptic weight (mV)')
     ax[2].set_ylabel('Density')

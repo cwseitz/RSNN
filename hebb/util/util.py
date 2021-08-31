@@ -1,8 +1,9 @@
 import numpy as np
-import powerlaw
+# import powerlaw
 import tensorflow as tf
 import os
 from glob import glob
+
 
 def stack_tensors(save_dir='data/'):
 
