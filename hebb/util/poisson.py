@@ -1,6 +1,6 @@
 import numpy as np
 
-def poisson_input(time, dt, units=100, rates=None):
+def poisson_input(time, dt, units=100, batches=1, rates=None):
 
     """
 
@@ -24,10 +24,10 @@ def poisson_input(time, dt, units=100, rates=None):
     nsteps = int(round(time/dt))
 
     if rates is None:
-        rates = 0.5*np.ones((units, nsteps))
+        rates = 0.5*np.ones((units, batches, nsteps))
 
     rates = rates*dt
-    x = np.random.uniform(0,1,size=(units,nsteps))
+    x = np.random.uniform(0,1,size=(units,batches,nsteps))
     spikes = np.array(x < rates, dtype=np.int32)
 
     return spikes

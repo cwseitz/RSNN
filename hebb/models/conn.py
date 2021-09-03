@@ -11,17 +11,16 @@ class InputConnectivityGenerator():
 
     def run_generator(self):
 
-        self.conn = self.conn()
-        self.weights = self.conn
+        self.weights = np.zeros((self.units, self.inputs))
+        self.k = int(round(self.p*self.inputs))
+        for n in range(0, self.units):
+            for a in range(0, self.k):
+                rand = np.random.randint(0, self.inputs)
+                while rand == n or self.weights[n][rand] == 1:
+                    rand = np.random.randint(0, self.inputs)
+                self.weights[n][rand] = 1
 
         return self.weights
-
-    def conn(self, dtype=np.float32):
-        _conn = np.zeros((self.inputs, self.units))
-        for i in range(self.inputs):
-            _conn[i] = np.random.choice([0,1], p=[1-self.p, self.p], size=(self.units,))
-        _conn = _conn.astype(dtype)
-        return _conn
 
 class ExInConnectivityMatrixGenerator():
 
@@ -83,3 +82,5 @@ class ExInConnectivityMatrixGenerator():
                 while rand == (n + self.n_excite) or self.weights[rand][n + self.n_excite] == 1:
                     rand = np.random.randint(self.n_excite, self.n_excite + self.n_inhib)
                 self.weights[rand][n + self.n_excite] = -1
+
+        return self.weights
