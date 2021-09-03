@@ -18,7 +18,7 @@ class InputConnectivityGenerator():
                 rand = np.random.randint(0, self.inputs)
                 while rand == n or self.weights[n][rand] == 1:
                     rand = np.random.randint(0, self.inputs)
-                self.weights[n][rand] = 1
+                self.weights[n][rand] = 0.03
 
         return self.weights
 
@@ -57,7 +57,7 @@ class ExInConnectivityMatrixGenerator():
                 rand = np.random.randint(0, self.n_excite)
                 while rand == n or self.weights[rand][n] == 1:
                     rand = np.random.randint(0, self.n_excite)
-                self.weights[rand][n] = 1
+                self.weights[rand][n] = 0.03
 
         # E to I connections
         for n in range(0, self.n_excite):
@@ -65,7 +65,7 @@ class ExInConnectivityMatrixGenerator():
                 rand = np.random.randint(self.n_excite, self.n_excite + self.n_inhib)
                 while self.weights[rand][n] == 1:
                     rand = np.random.randint(self.n_excite, self.n_excite + self.n_inhib)
-                self.weights[rand][n] = 1
+                self.weights[rand][n] = 0.03
 
         # I to E connections
         for n in range(0, self.n_inhib):
@@ -73,7 +73,7 @@ class ExInConnectivityMatrixGenerator():
                 rand = np.random.randint(0, self.n_excite)
                 while self.weights[rand][n + self.n_excite] == 1:
                     rand = np.random.randint(0, self.n_excite)
-                self.weights[rand][n + self.n_excite] = -1
+                self.weights[rand][n + self.n_excite] = -0.03
 
         # I to I connections
         for n in range(0, self.n_inhib):
@@ -81,6 +81,6 @@ class ExInConnectivityMatrixGenerator():
                 rand = np.random.randint(self.n_excite, self.n_excite + self.n_inhib)
                 while rand == (n + self.n_excite) or self.weights[rand][n + self.n_excite] == 1:
                     rand = np.random.randint(self.n_excite, self.n_excite + self.n_inhib)
-                self.weights[rand][n + self.n_excite] = -1
+                self.weights[rand][n + self.n_excite] = -0.03
 
         return self.weights
