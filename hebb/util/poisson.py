@@ -1,6 +1,6 @@
 import numpy as np
 
-def poisson_input(time, dt, units=100, batches=1, rates=None):
+class Poisson:
 
     """
 
@@ -10,24 +10,34 @@ def poisson_input(time, dt, units=100, batches=1, rates=None):
     ----------
     rates : ndarray
         A matrix - each value providing the firing rate for a single input unit
-        If not specified, generate an ensemble of homogeneous poisson processes
-        with rate parameter equal to 0.1
+        By default, generate an ensemble of homogeneous poisson processes
+        with rate equal to 20Hz
 
     Returns
     -------
     spikes : 2d ndarray
         a binary matrix containing the spiking patterns for the ensemble
-        (i, j) --> (unit, time)
+        (i, j) --> (unit, nsteps)
 
     """
 
-    nsteps = int(round(time/dt))
+    def __init__(self, n_in, nsteps, dt=0.01, batches=1, rates=None):
 
-    if rates is None:
-        rates = 0.5*np.ones((units, batches, nsteps))
+        self.n_in = n_in
+        self.nsteps = nsteps
+        self.dt = dt #seconds
+        self.batches = batches
+        self.def_rate = 20 #default rate (Hz)
 
-    rates = rates*dt
-    x = np.random.uniform(0,1,size=(units,batches,nsteps))
-    spikes = np.array(x < rates, dtype=np.int32)
+        if rates is None:
+            rates = self.def_rate*np.ones((self.n_in, self.batches, self.nsteps))
 
-    return spikes
+        self.rates = rates
+
+    def run_generator(self):
+
+        self.r = self.rates*self.dt
+        self.x = np.random.uniform(0,1,size=(self.n_in,self.batches,self.nsteps))
+        spikes = np.array(self.x < self.r, dtype=np.int32)
+
+        return spikes

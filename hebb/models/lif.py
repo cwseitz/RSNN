@@ -1,5 +1,4 @@
 import numpy as np
-import tensorflow as tf
 from .conn import *
 
 class ExInLIF:
@@ -41,15 +40,15 @@ class ExInLIF:
         self.n_inhib = self.n_rec - self.n_excite
         self.p_xx = p_xx
         self.dtype = dtype
-        self.tau = tf.constant(tau, dtype=dtype)
+        self.tau = tau
         self.tau_ref = tau_ref
-        self.decay = tf.exp(-dt / self.tau)
+        self.decay = -dt/self.tau
         self.thr = thr
         self.period = period
         self.batches = batches
 
         #Network connectivity
-        self.in_cmg = InputConnectivityGenerator(n_in, n_rec)
+        self.in_cmg = InputConnectivityGenerator(self.n_in,self. n_rec)
         ex_in_params = [self.n_excite, self.n_inhib, self.p_xx]
         self.rec_cmg = ExInConnectivityMatrixGenerator(*ex_in_params)
         self.in_weights = self.in_cmg.run_generator()
