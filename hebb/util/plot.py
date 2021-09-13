@@ -1,235 +1,97 @@
 import matplotlib.pyplot as plt
-# import powerlaw
 import numpy as np
 from matplotlib import cm
 from .util import *
 
 
-def activity_plot(input, spikes):
+def plot_input_statistics(v, bins=10):
 
-    fig, ax = plt.subplots(4,1, sharex=False)
-    input_activity = get_counts_per_frame(input)
-    spike_activity = get_counts_per_frame(spikes)
-    input_rates = np.mean(input.T, axis=1)
-    spike_rates = np.mean(spikes.T, axis=1)
+    """
 
-    ax[0].imshow(input.T, cmap='gray')
-    ax[1].imshow(spikes.T, cmap='gray')
-    ax[2].plot(input_activity, color='red')
-    ax[2].plot(spike_activity, color='blue')
+    Plot the distribution of voltage updates at each time step
 
-    ax[3].hist(input_rates, color='red')
-    ax[3].hist(spike_rates, color='blue')
+    Parameters
+    ----------
+    v : ndarray
+        A tensor, where each element is the membrane potential of a neuron
+        at a particular time. Has shape (unit, batch, time)
 
-    plt.show()
+    Returns
+    -------
+    None
 
+    """
 
-# def avalanche_plot(spikes, iter=-1, batch=-1, color='blue'):
-#
-#     iters, batches, seq_len, units = spikes.shape
-#     map = cm.get_cmap('coolwarm')
-#     colors = map(np.linspace(0, 1, iters))
-#
-#     spikes = spikes[iter][batch]
-#     counts_per_frame = get_counts_per_frame(spikes)
-#     av_sizes = get_avalanche_sizes(spikes)
-#
-#     fit = powerlaw.Fit(av_sizes)
-#
-#     powerlaw.plot_pdf(av_sizes, color=color)
-
-def ex_weight_plot(w_ee, w_e_in):
-
-    fig, ax = plt.subplots(1, 3)
-
-    ax[0].imshow(w_ee, cmap='gray')
-    ax[0].set_title('W_EE', size=8)
-    ax[0].set_xlabel('Neuron')
-    ax[0].set_ylabel('Neuron')
-
-    ax[1].imshow(w_e_in, cmap='gray')
-    ax[1].set_title('W_IN', size=8)
-    ax[1].set_xlabel('Neuron')
-    ax[1].set_ylabel('Input')
-
-    w_ee = w_ee.flatten()
-    w_e_in = w_ee.flatten()
-
-    w_ee_vals, w_ee_bins = np.histogram(w_ee, bins=10, density=True)
-    w_e_in_vals, w_e_in_bins = np.histogram(w_e_in, bins=10, density=True)
-
-    ax[2].plot(w_ee_bins[:-1], w_ee_valands, color='red', label='W_EE')
-    ax[2].plot(w_e_in_bins[:-1], w_e_in_vals, color='blue', label='W_IN')
-    ax[2].set_xlabel('Synaptic weight (mV)')
-    ax[2].set_ylabel('Density')
-    ax[2].legend()
-
-    plt.tight_layout()
-
-def ex_in_weight_plot(w_ee, w_ei, w_ie, w_ii, w_e_in):
-
-    fig, ax = plt.subplots(2, 3)
-
-    ax[0,0].imshow(w_ee, cmap='gray')
-    ax[0,0].set_title('W_EE', size=8)
-    ax[0,0].set_xlabel('Neuron')
-    ax[0,0].set_ylabel('Neuron')
-
-    ax[0,1].imshow(w_ei, cmap='gray')
-    ax[0,1].set_title('W_EI', size=8)
-    ax[0,1].set_xlabel('Neuron')
-    ax[0,1].set_ylabel('Neuron')
-
-    ax[1,0].imshow(w_ie, cmap='gray')
-    ax[1,0].set_title('W_IE', size=8)
-    ax[1,0].set_xlabel('Neuron')
-    ax[1,0].set_ylabel('Neuron')
-
-    ax[1,1].imshow(w_ii, cmap='gray')
-    ax[1,1].set_title('W_II', size=8)
-    ax[1,1].set_xlabel('Neuron')
-    ax[1,1].set_ylabel('Neuron')
-
-    ax[1,2].imshow(w_e_in, cmap='gray')
-    ax[1,2].set_title('W_IN', size=8)
-    ax[1,2].set_xlabel('Input')
-    ax[1,2].set_ylabel('Neuron')
-
-    w_ee = w_ee.flatten()
-    w_ei = w_ei.flatten()
-    w_ie = w_ie.flatten()
-    w_ii = w_ii.flatten()
-
-    w_ee_vals, w_ee_bins = np.histogram(w_ee, bins=10, density=True)
-    w_ei_vals, w_ei_bins = np.histogram(w_ei, bins=10, density=True)
-    w_ie_vals, w_ie_bins = np.histogram(w_ie, bins=10, density=True)
-    w_ii_vals, w_ii_bins = np.histogram(w_ii, bins=10, density=True)
-
-    ax[0,2].plot(w_ee_bins[:-1], w_ee_vals, color='red', label='W_EE')
-    ax[0,2].plot(w_ei_bins[:-1], w_ei_vals, color='blue', label='W_EI')
-    ax[0,2].plot(w_ie_bins[:-1], w_ie_vals, color='black', label='W_IE')
-    ax[0,2].plot(w_ii_bins[:-1], w_ii_vals, color='cyan', label='W_II')
-
-    ax[0,2].set_xlabel('Synaptic weight (mV)')
-    ax[0,2].set_ylabel('Density')
-    ax[0,2].legend()
-
-    plt.tight_layout()
-
-# def weight_plot(in_weights, rec_weights, n_excite=80):
-#
-#     flat_in = in_weights.flatten()
-#     in_vals, in_bins = np.histogram(flat_in, density=True)
-#
-#     flat_ex = rec_weights[:n_excite, :].flatten()
-#     flat_inh = rec_weights[n_excite:, :].flatten()
-#     ex_vals, ex_bins = np.histogram(flat_ex, bins=10, density=True)
-#     inh_vals, inh_bins = np.histogram(flat_inh, bins=10, density=True)
-#
-#     fig, ax = plt.subplots(1, 3)
-#
-#     ax[0].imshow(in_weights, cmap='gray')
-#     ax[0].set_title('Input weights', size=8)
-#     ax[0].set_xlabel('Neuron')
-#     ax[0].set_ylabel('Input')
-#
-#     ax[1].imshow(rec_weights, cmap='gray')
-#     ax[1].set_title('Recurrent weights', size=8)
-#     ax[1].set_xlabel('Input')
-#     ax[1].set_ylabel('Neuron')
-#
-#     ax[2].plot(in_bins[:-1], in_vals, color='black', label='Input')
-#     # ax[2].plot(inh_bins[:-1], inh_vals, color='blue', label='Inhibitory')
-#     # ax[2].plot(ex_bins[:-1], ex_vals, color='red', label='Excitatory')
-#     ax[2].set_xlim([-5, 3])
-#     ax[2].set_xlabel('Synaptic weight (mV)')
-#     ax[2].set_ylabel('Density')
-#     ax[2].legend()
-#
-#     plt.tight_layout()
-
-
-# def weight_plot(in_weights, rec_weights):
-#
-#     fig, ax = plt.subplots(2, 3)
-#     ax[0,0].imshow(in_weights.conn, cmap='gray')
-#     ax[0,0].set_title('Input connectivity', size=8)
-#     ax[0,0].set_xlabel('Input')
-#     ax[0,0].set_ylabel('Neuron')
-#
-#     ax[0,1].imshow(in_weights.weights, cmap='gray')
-#     ax[0,1].set_title('Input weights', size=8)
-#     ax[0,1].set_xlabel('Input')
-#     ax[0,1].set_ylabel('Neuron')
-#
-#     ax[1,0].imshow(rec_weights.conn, cmap='gray')
-#     ax[1,0].set_title('Recurrent connectivity', size=8)
-#     ax[1,0].set_xlabel('Neuron')
-#     ax[1,0].set_ylabel('Neuron')
-#
-#     ax[1,1].imshow(rec_weights.weights, cmap='gray')
-#     ax[1,1].set_title('Recurrent weights', size=8)
-#     ax[1,1].set_xlabel('Neuron')
-#     ax[1,1].set_ylabel('Neuron')
-#
-#     in_partition_ind = [(0, in_weights.conn.shape[0]),(0, in_weights.conn.shape[1])]
-#     flat_in = vectorize(in_weights.conn, in_weights.weights, in_partition_ind)
-#     in_vals, in_bins = np.histogram(flat_in, density=True)
-#
-#     ax[0,2].plot(in_bins[:-1], in_vals, color='red', label='Input')
-#     ax[0,2].set_xlabel('Synaptic weight (mV)')
-#     ax[0,2].set_ylabel('Density')
-#     ax[0,2].legend()
-#
-#     ex_part_ind = [(0, rec_weights.n_excite), (0, rec_weights.conn.shape[1])]
-#     flat_ex = vectorize(rec_weights.conn, rec_weights.weights, ex_part_ind)
-#
-#     inh_part_ind = [(rec_weights.n_excite, rec_weights.conn.shape[0]),
-#                    (0, rec_weights.conn.shape[1])]
-#
-#     flat_inh = vectorize(rec_weights.conn, rec_weights.weights, inh_part_ind)
-#
-#     ex_vals, ex_bins = np.histogram(flat_ex, bins=30, density=True)
-#     inh_vals, inh_bins = np.histogram(flat_inh, bins=30, density=True)
-#
-#     ax[1,2].plot(inh_bins[:-1], inh_vals, color='red', label='Inhibitory')
-#     ax[1,2].plot(ex_bins[:-1], ex_vals, color='blue', label='Excitatory')
-#     ax[1,2].set_xlabel('Synaptic weight (mV)')
-#     ax[1,2].set_ylabel('Density')
-#     ax[1,2].legend()
-#
-#     plt.tight_layout()
-
-def pattern_plot(spikes):
-
-    prob = pattern_prob(spikes)
     fig, ax = plt.subplots()
-    ax.plot(prob, color='red')
-    ax.set_yscale('log')
-    ax.set_ylabel('log P')
-    ax.set_xlabel('Pattern index')
-    plt.show()
 
-def spike_plot(input, spikes, voltage):
-
-    fig, ax = plt.subplots(3,1, sharex=True)
-
-    ax[0].imshow(input.T, cmap='gray')
-    ax[0].set_ylabel('Spikes')
-
-    ax[1].imshow(spikes.T, cmap='gray')
-    ax[1].set_ylabel('Reservoir spikes')
-
-    ax[2].imshow(voltage.T, cmap='gray')
-    ax[2].set_ylabel('Reservoir voltage')
-
+    nsteps = v.shape[-1]
+    colormap = cm.get_cmap('coolwarm')
+    colors = colormap(np.linspace(0, 1, nsteps))
+    #compute the first difference in the voltage along time axis
+    v_diff = np.diff(v, axis=-1)
+    #compute the histogram of values over (unit, batch) matrix
+    hist_arr, edges_arr = [], []
+    for t in range(nsteps):
+        hist, edges = np.histogram(v_diff[:,:,t-1], bins=bins, density=True)
+        plt.plot(edges[:-1], hist, color=colors[t], alpha=0.5)
+    ax.set_title('Input Statistics')
+    ax.set_xlabel('Voltage (a.u.)')
+    ax.set_ylabel('PDF')
     plt.tight_layout()
 
-def train_plot(sl_1, sl_2):
+def plot_voltage_statistics(v, bins=10):
+
+    """
+
+    Plot the distribution of voltages at each time step
+
+    Parameters
+    ----------
+    v : ndarray
+        A tensor, where each element is the membrane potential of a neuron
+        at a particular time. Has shape (unit, batch, time)
+
+    Returns
+    -------
+    None
+
+    """
+
+    fig, ax = plt.subplots()
+
+    units, batches, nsteps = v.shape
+    colormap = cm.get_cmap('coolwarm')
+    colors = colormap(np.linspace(0, 1, nsteps))
+
+    #compute the histogram of values over (unit, batch) matrix
+    hist_arr, edges_arr = [], []
+    for t in range(nsteps):
+        hist, edges = np.histogram(v[:,:,t], bins=bins, density=True)
+        ax.plot(edges[:-1], hist, color=colors[t], alpha=0.5)
+
+    ax.set_xlabel('Voltage (a.u.)')
+    ax.set_ylabel('PDF')
+    plt.tight_layout()
+
+
+def plot_weights(net):
+
+    """
+
+    Plot the input weight matrix and recurrent weight matrix
+
+    Parameters
+    ----------
+    net : object
+        A LIF network object
+
+    Returns
+    -------
+    None
+
+    """
 
     fig, ax = plt.subplots(1,2)
-    ax[0].plot(sl_1, color='black', label='SL1')
-    ax[1].plot(sl_2, color='blue', label='SL2')
-    ax[0].legend()
-    ax[1].legend()
+    ax[0].imshow(net.in_weights, cmap='gray')
+    ax[1].imshow(net.rec_weights, cmap='gray')
     plt.tight_layout()

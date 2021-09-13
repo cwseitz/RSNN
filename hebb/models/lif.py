@@ -3,7 +3,7 @@ from .conn import *
 
 class ExInLIF:
 
-    def __init__(self, n_in, n_rec, p_xx, period=100, p_e=0.8, tau=20.,
+    def __init__(self, n_in, n_rec, p_xx, nsteps, p_e=0.8, tau=20.,
                  thr=0.615, dt=1., tau_ref=3, batches=1, dtype=np.float32):
 
         """
@@ -44,7 +44,7 @@ class ExInLIF:
         self.tau_ref = tau_ref
         self.decay = -dt/self.tau
         self.thr = thr
-        self.period = period
+        self.nsteps = nsteps
         self.batches = batches
 
         #Network connectivity
@@ -70,13 +70,13 @@ class ExInLIF:
     def zero_state(self, batches=1):
 
         #pad along time axis for calculating the refractory variable as a sum over z
-        self.v = np.zeros(shape=(self.n_rec, batches, self.period+self.tau_ref), dtype=self.dtype)
-        self.z = np.zeros(shape=(self.n_rec, batches, self.period+self.tau_ref), dtype=np.int8)
-        self.r = np.zeros(shape=(self.n_rec, batches, self.period+self.tau_ref), dtype=np.int8)
+        self.v = np.zeros(shape=(self.n_rec, batches, self.nsteps+self.tau_ref), dtype=self.dtype)
+        self.z = np.zeros(shape=(self.n_rec, batches, self.nsteps+self.tau_ref), dtype=np.int8)
+        self.r = np.zeros(shape=(self.n_rec, batches, self.nsteps+self.tau_ref), dtype=np.int8)
 
     def call(self, input):
 
-        for t in range(self.tau_ref, self.period):
+        for t in range(self.tau_ref, self.nsteps):
 
             #check if the neuron spiked in the last tau_ref time steps
             self.r[:,:,t] = np.sum(self.z[:,:,t-self.tau_ref:t], axis=-1)
@@ -89,7 +89,7 @@ class ExInLIF:
             i_reset = -(self.v[:,:,t-1] + i_in + i_rec)*self.r[:,:,t]
 
             #update the voltage
-            self.v[:,:,t] = self.decay*self.v[:,:,t-1] + i_in + i_rec + i_reset
+            self.v[:,:,t] = (self.dt/self.tau)*(self.v[:,:,t-1]) + i_in + i_rec + i_reset
 
             #apply spike function to current time step
             self.z[:,:,t] = self.spike_function(self.v[:,:,t])

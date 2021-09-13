@@ -27,7 +27,7 @@ class Poisson:
         self.nsteps = nsteps
         self.dt = dt #seconds
         self.batches = batches
-        self.def_rate = 20 #default rate (Hz)
+        self.def_rate = 0.2 #default rate (Hz)
 
         if rates is None:
             rates = self.def_rate*np.ones((self.n_in, self.batches, self.nsteps))
