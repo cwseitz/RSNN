@@ -109,17 +109,12 @@ class OrnsteinUhlenbeck:
         self.batch_size = batch_size
 
         #Arrays for simulation history
-        self.V = np.zeros((self.nsteps,batch_size))
+        self.V = np.zeros((self.nsteps, self.batch_size))
         self.P = []
-
-        #Generate an instance of Brownian motion
-        self.b = Brownian(self.V0, self.nsteps, self.dt, self.beta, self.batch_size)
-        self.b.forward()
-        self.dW = self.b.dV
 
     def solve_analytic(self):
 
-        self.dom = np.linspace(-2, 2, 100)
+        self.dom = np.linspace(0, self.V0, 100)
         for n in range(1, self.nsteps):
             var = (self.beta**2/(2*self.alpha))*(1-np.exp(-2*self.alpha*n*self.dt))
             mu = self.V0*np.exp(-self.alpha*n*self.dt)
@@ -130,7 +125,8 @@ class OrnsteinUhlenbeck:
 
     def forward(self):
 
-        self.V += self.V0
-        for t in range(1, self.nsteps):
-            for b in range(self.batch_size):
-                self.V[t,b] = (1-self.alpha)*self.V[t-1,b] + self.dW[t,b]
+        self.V[0,:] = self.V0
+        noise = np.random.normal(loc=0.0,scale=1.0,size=(self.nsteps,self.batch_size))*np.sqrt(self.dt) #define noise process
+        for i in range(1,self.nsteps):
+            for j in range(self.batch_size):
+                self.V[i,j] = self.V[i-1,j] - self.dt*self.alpha*(self.V[i-1,j]) + self.beta*noise[i,j]
