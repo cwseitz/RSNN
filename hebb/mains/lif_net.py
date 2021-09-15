@@ -17,8 +17,6 @@ spikes = Poisson(n_in, nsteps, dt=dt, batches=batches).run_generator()
 net = ExInLIF(n_in, n_rec, p_xx, nsteps, tau=1, p_e=p_e, batches=batches)
 v,z,r = net.call(spikes)
 
-
-
 batch_ind = 0
 fig, ax = plt.subplots()
 ax.imshow(spikes[:,batch_ind,:], cmap='gray')

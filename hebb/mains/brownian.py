@@ -5,15 +5,14 @@ from matplotlib import cm
 from hebb.util import *
 from hebb.models import *
 
-nsteps = 100
-V_0 = 0
-J = 1
-alpha = 0.01
-tau = 1
+nsteps = 1000
+dt = 0.001
+V0 = 5
+beta = 0.2
 batch_size = 1000
 
-langGWN = LangevinGWN(nsteps, V_0, J, alpha, batch_size=batch_size, tau=tau)
-langGWN.forward()
+S = Brownian(V0, nsteps, dt, beta, batch_size=batch_size)
+S.forward()
 
 """
 Distribution of V in time
@@ -25,9 +24,10 @@ norm = mpl.colors.Normalize(vmin=0, vmax=nsteps)
 
 fig, ax = plt.subplots()
 
-for i in range(nsteps):
-    vals, bins = np.histogram(langGWN.V[i,:])
-    ax.plot(bins[:-1], vals, color=colors[i])
+for i in range(1, nsteps):
+    vals, bins = np.histogram(S.V[i,:], density=True)
+    center = (bins[:-1] + bins[1:]) / 2
+    ax.plot(center, vals, color=colors[i])
 
 ax.set_xlabel('V')
 ax.set_ylabel('P(V)')
@@ -47,12 +47,11 @@ norm = mpl.colors.Normalize(vmin=0, vmax=batch_size)
 fig, ax = plt.subplots()
 
 for i in range(batch_size):
-    ax.plot(langGWN.V[:,i], color=colors[i], alpha=0.3)
+    ax.plot(S.V[:,i], color='blue', alpha=0.3)
 
 ax.set_xlabel('Time')
 ax.set_ylabel('V')
 
-fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=colormap), label='Simulation Index')
 plt.tight_layout()
 plt.grid()
 plt.show()
