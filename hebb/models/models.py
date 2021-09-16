@@ -74,13 +74,13 @@ class Brownian:
         return self.V
 
 
-class OrnsteinUhlenbeck:
+class StationaryOU:
 
-    def __init__(self, nsteps, V_R, tau, sigma, dt=0.001, batch_size=1, xmin=0, xmax=1, dtype=np.float32):
+    def __init__(self, nsteps, tau, sigma, dt=0.001, dv=0.001, batch_size=1, v_max=1, V_R=0, dtype=np.float32):
 
         """
 
-        Integrate a Langevin equation when the noise term is a Gaussian white noise
+        Integrate a Langevin equation for stationary white noise
         (an Ornstein Uhlenbeck Process)
 
         Parameters
@@ -97,6 +97,12 @@ class OrnsteinUhlenbeck:
             Noise amplitude
         batch_size: int
             Number of simulations to run
+        v_min : int
+            Minimum value for the voltage domain
+        v_max : int
+            Maximum value for the voltage domain
+        dv : float
+            Resolution for the voltage domain
 
         """
 
@@ -107,23 +113,42 @@ class OrnsteinUhlenbeck:
         self.alpha = 1/tau
         self.sigma = sigma
         self.batch_size = batch_size
-        self.xmin = xmin
-        self.xmax = xmax
+        self.v_max = v_max
+        self.dv = dv
+        self.n_v = int(round(self.v_max/dv))
+        self._V = np.linspace(0, self.v_max, self.n_v)
 
         #Arrays for simulation history
         self.V = np.zeros((self.nsteps, self.batch_size))
-        self.P = []
+        self.P_A = np.zeros((len(self._V), self.nsteps))
+        self.P_N = np.zeros((len(self._V), self.nsteps))
 
-    def solve_analytic(self):
+    def solve_fp_numeric(self):
 
-        self.x = np.linspace(self.xmin, self.xmax, 100)
+        """
+
+        Solve the following Fokker-Planck equation numerically
+
+        dP/dt = alpha*d/dV[V*P] + (sigma^2/2)*d^2/dV^2(P)
+
+        Written as a probability current: dP/dt = -dS/dV --> dP = -dt*(dS/dV)
+
+        S = -(alpha*V*P + (sigma^2/2)*dP/dV)
+
+        """
+
+        self.P_N[:,0] = 1
+        for n in range(1, self.nsteps):
+
+
+    def solve_fp_analytic(self):
+
         for n in range(1, self.nsteps):
             var = (self.sigma**2/(2*self.alpha))*(1-np.exp(-2*self.alpha*n*self.dt))
             mu = self.V_R*np.exp(-self.alpha*n*self.dt)
-            P_t = np.sqrt(1/np.sqrt(2*np.pi*var))*np.exp(-((self.x-mu)**2)/(2*var))
-            self.P.append(P_t)
-        self.P = np.array(self.P)
-        return self.P
+            P_t = np.sqrt(1/np.sqrt(2*np.pi*var))*np.exp(-((self._V-mu)**2)/(2*var))
+            self.P_A[:,n] = P_t
+        return self.P_A
 
     def forward(self):
 
@@ -132,3 +157,54 @@ class OrnsteinUhlenbeck:
         for i in range(1,self.nsteps):
             for j in range(self.batch_size):
                 self.V[i,j] = self.V[i-1,j] - self.dt*self.alpha*(self.V[i-1,j]) + self.sigma*noise[i,j]
+
+class NonStationaryOU:
+
+    def __init__(self, nsteps, V_R, tau, mu, sigma, dt=0.001, batch_size=1, xmin=0, xmax=1, dtype=np.float32):
+
+        """
+
+        Integrate a Langevin equation for non-stationary white noise
+        (an Ornstein Uhlenbeck Process)
+
+        Parameters
+        ----------
+
+        nsteps: float
+            Number of time steps before the simulation terminates
+        V0 : float
+            Initial condition for the stochastic variable V
+        alpha: float
+            Rate parameter for the linear drift of the white noise process
+            (see equation above)
+        mu: ndarray
+            The mean of the non-stationary white noise as a function of time
+        sigma: float
+            Noise amplitude
+        batch_size: int
+            Number of simulations to run
+
+        """
+
+        #Params
+        self.nsteps = nsteps
+        self.dt = dt
+        self.V_R = V_R
+        self.alpha = 1/tau
+        self.mu = mu
+        self.sigma = sigma
+        self.batch_size = batch_size
+        self.xmin = xmin
+        self.xmax = xmax
+
+        #Arrays for simulation history
+        self.V = np.zeros((self.nsteps, self.batch_size))
+        self.P = []
+
+    def forward(self):
+
+        self.V[0,:] = self.V_R
+        noise = np.random.normal(loc=0.0,scale=1.0,size=(self.nsteps,self.batch_size))*np.sqrt(self.dt) #define noise process
+        for i in range(1,self.nsteps):
+            for j in range(self.batch_size):
+                self.V[i,j] = self.V[i-1,j] - self.dt*self.alpha*(self.V[i-1,j]) + self.mu[i] + self.sigma*noise[i,j]

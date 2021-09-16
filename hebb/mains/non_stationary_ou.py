@@ -7,38 +7,25 @@ from hebb.models import *
 
 nsteps = 1000
 dt = 0.002
-V_R = 0.75
+V_R = 0
 tau = 0.1
-beta = 0.3
+f = 1000*dt
+mu = 0.01*np.sin(2*np.pi*f*np.arange(nsteps)*dt)
+sigma = 0.3
 batch_size = 1000
 xmin=0
 xmax=2
 
-S = OrnsteinUhlenbeck(nsteps, V_R, tau, beta, batch_size=batch_size, xmin=xmin, xmax=xmax)
+S = NonStationaryOU(nsteps, V_R, tau, mu, sigma, batch_size=batch_size, xmin=xmin, xmax=xmax)
 S.forward()
-P = S.solve_analytic()
 
 """
-Distribution of V in time - analytical solution
+Mean of drifting noise - a function of time
 """
-
-colormap = cm.get_cmap('coolwarm')
-colors = colormap(np.linspace(0, 1, nsteps))
-norm = mpl.colors.Normalize(vmin=0, vmax=nsteps)
-
 
 fig, ax = plt.subplots()
+ax.plot(np.arange(nsteps)*dt, mu, color='blue')
 
-for i in range(P.shape[0]):
-    ax.plot(S.x, P[i], color=colors[i])
-
-ax.set_xlabel('V')
-ax.set_ylabel('P(V)')
-
-fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=colormap), label='Time')
-plt.title('Analytical Solution')
-plt.tight_layout()
-plt.grid()
 
 """
 Distribution of V in time - simulation
@@ -52,7 +39,6 @@ fig, ax = plt.subplots()
 
 for i in range(1, nsteps):
     vals, bins = np.histogram(S.V[i,:], density=True)
-    #center = (bins[:-1] + bins[1:]) / 2
     ax.plot(bins[:-1], vals, color=colors[i])
 
 ax.set_xlim([xmin, xmax])
