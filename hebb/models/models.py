@@ -3,7 +3,7 @@ from scipy.stats import norm
 
 class Brownian:
 
-    def __init__(self, V0, nsteps, dt, beta, batch_size=1, dtype=np.float32):
+    def __init__(self, V0, nsteps, dt, sigma, batch_size=1, dtype=np.float32):
 
         """
 
@@ -15,7 +15,7 @@ class Brownian:
         self.V0 = V0
         self.nsteps = nsteps
         self.dt = dt
-        self.beta = beta
+        self.sigma = sigma
         self.batch_size = batch_size
         self.V = []
 
@@ -64,7 +64,7 @@ class Brownian:
         for i in range(self.batch_size):
 
             # For each element of x0, generate a sample of n numbers from a normal distribution
-            self.dV_i = norm.rvs(size=(self.nsteps,), scale=self.beta*np.sqrt(self.dt))
+            self.dV_i = norm.rvs(size=(self.nsteps,), scale=self.sigma*np.sqrt(self.dt))
             self.dV.append(self.dV_i)
 
         self.dV = np.array(self.dV).T #rows are time, columns are simulations
@@ -76,7 +76,7 @@ class Brownian:
 
 class OrnsteinUhlenbeck:
 
-    def __init__(self, nsteps, V0, alpha, beta, dt=0.001, batch_size=1, dtype=np.float32):
+    def __init__(self, nsteps, V_R, tau, sigma, dt=0.001, batch_size=1, xmin=0, xmax=1, dtype=np.float32):
 
         """
 
@@ -93,7 +93,7 @@ class OrnsteinUhlenbeck:
         alpha: float
             Rate parameter for the linear drift of the white noise process
             (see equation above)
-        beta: float
+        sigma: float
             Noise amplitude
         batch_size: int
             Number of simulations to run
@@ -103,10 +103,12 @@ class OrnsteinUhlenbeck:
         #Params
         self.nsteps = nsteps
         self.dt = dt
-        self.V0 = V0
-        self.alpha = alpha
-        self.beta = beta
+        self.V_R = V_R
+        self.alpha = 1/tau
+        self.sigma = sigma
         self.batch_size = batch_size
+        self.xmin = xmin
+        self.xmax = xmax
 
         #Arrays for simulation history
         self.V = np.zeros((self.nsteps, self.batch_size))
@@ -114,19 +116,19 @@ class OrnsteinUhlenbeck:
 
     def solve_analytic(self):
 
-        self.dom = np.linspace(0, self.V0, 100)
+        self.x = np.linspace(self.xmin, self.xmax, 100)
         for n in range(1, self.nsteps):
-            var = (self.beta**2/(2*self.alpha))*(1-np.exp(-2*self.alpha*n*self.dt))
-            mu = self.V0*np.exp(-self.alpha*n*self.dt)
-            P_t = np.sqrt(1/np.sqrt(2*np.pi*var))*np.exp(-((self.dom-mu)**2)/(2*var))
+            var = (self.sigma**2/(2*self.alpha))*(1-np.exp(-2*self.alpha*n*self.dt))
+            mu = self.V_R*np.exp(-self.alpha*n*self.dt)
+            P_t = np.sqrt(1/np.sqrt(2*np.pi*var))*np.exp(-((self.x-mu)**2)/(2*var))
             self.P.append(P_t)
         self.P = np.array(self.P)
         return self.P
 
     def forward(self):
 
-        self.V[0,:] = self.V0
+        self.V[0,:] = self.V_R
         noise = np.random.normal(loc=0.0,scale=1.0,size=(self.nsteps,self.batch_size))*np.sqrt(self.dt) #define noise process
         for i in range(1,self.nsteps):
             for j in range(self.batch_size):
-                self.V[i,j] = self.V[i-1,j] - self.dt*self.alpha*(self.V[i-1,j]) + self.beta*noise[i,j]
+                self.V[i,j] = self.V[i-1,j] - self.dt*self.alpha*(self.V[i-1,j]) + self.sigma*noise[i,j]
