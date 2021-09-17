@@ -127,18 +127,20 @@ class StationaryOU:
 
         """
 
-        Solve the following Fokker-Planck equation numerically
+        Solve the following Fokker-Planck equation using central finite differences
 
         dP/dt = alpha*d/dV[V*P] + (sigma^2/2)*d^2/dV^2(P)
 
-        Written as a probability current: dP/dt = -dS/dV --> dP = -dt*(dS/dV)
-
-        S = -(alpha*V*P + (sigma^2/2)*dP/dV)
+        Enforce boundary conditions P(0) = 0 and P(vmax) = 0.
 
         """
 
         self.P_N[:,0] = 1
         for n in range(1, self.nsteps):
+            for v in range(1,self.n_v-1):
+                self.P_N[v,t] = self.P_N[v,t-1] -\
+                self.dt*self.alpha*(self.P_N[v,t]-self.P_N[v-1,t])/self.dv +\
+                self.dt*0.5*(self.sigma**2)*(self.P_N[v+1,t]-2*self.P_N[v,t]+self.P_N[v-1,t])/(self.dv**2)
 
 
     def solve_fp_analytic(self):
