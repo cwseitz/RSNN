@@ -12,93 +12,45 @@ sigma = 1
 batch_size = 1000
 v_max = 1
 
-S = StationaryOU(nsteps, tau, sigma, batch_size=batch_size, v_max=v_max)
+S = StationaryOU(nsteps, tau, sigma, batch_size=batch_size, dv=0.1, v_max=v_max)
 S.forward()
 S.solve_fp_analytic()
-S.solve_fp_numeric()
+S.histogram()
 
 """
-Analytical solution
+Probability Densities
 """
 
-colormap = cm.get_cmap('coolwarm')
-colors = colormap(np.linspace(0, 1, nsteps))
-norm = mpl.colors.Normalize(vmin=0, vmax=nsteps)
-
-
-fig, ax = plt.subplots()
-fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=colormap), label='Time')
-
-for i in range(1, nsteps):
-    ax.plot(S._V, S.P_A[:,i], color=colors[i])
-
-ax.set_xlabel('V')
-ax.set_ylabel('P(V)')
-plt.tight_layout()
-plt.title('Analytical Solution')
-
-"""
-Numerical solution
-"""
-
-
-colormap = cm.get_cmap('coolwarm')
-colors = colormap(np.linspace(0, 1, nsteps))
-norm = mpl.colors.Normalize(vmin=0, vmax=nsteps)
-
-
-fig, ax = plt.subplots()
-fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=colormap), label='Time')
-
-for i in range(1, nsteps):
-    ax.plot(S._V, S.P_N[i,:], color=colors[i])
-
-ax.set_xlabel('V')
-ax.set_ylabel('P(V)')
-plt.tight_layout()
-plt.title('Numerical Solution')
-
-
-"""
-Simulation
-"""
-
-colormap = cm.get_cmap('coolwarm')
-colors = colormap(np.linspace(0, 1, nsteps))
-norm = mpl.colors.Normalize(vmin=0, vmax=nsteps)
+steps = [100, 200, 999]
 
 fig, ax = plt.subplots()
 
-for i in range(1, nsteps):
-    vals, bins = np.histogram(S.V[i,:], density=True)
-    center = (bins[:-1] + bins[1:])/2
-    ax.plot(center, vals, color=colors[i])
+ax.plot(S._V, S.P_A[:,steps[0]], color='red', label='0ms', linestyle='--')
+ax.plot(S._V, S.P_A[:,steps[1]], color='blue', label='100ms', linestyle='--')
+ax.plot(S._V, S.P_A[:,steps[2]], color='cyan', label='200ms', linestyle='--')
 
-ax.set_xlim([0, v_max])
+ax.plot(S._V, S.P_S[:,steps[0]], color='red', label='0ms')
+ax.plot(S._V, S.P_S[:,steps[1]], color='blue', label='100ms')
+ax.plot(S._V, S.P_S[:,steps[2]], color='cyan', label='200ms')
+
+ax.set_xlim([-v_max, v_max])
 ax.set_xlabel('V')
 ax.set_ylabel('P(V)')
-
-fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=colormap), label='Time')
 plt.tight_layout()
 plt.grid()
 
-# """
-# Trajectories
-# """
-#
-# colormap = cm.get_cmap('Blues')
-# colors = colormap(np.linspace(0, 1, batch_size))
-# norm = mpl.colors.Normalize(vmin=0, vmax=batch_size)
-#
-# fig, ax = plt.subplots()
-#
-# for i in range(batch_size):
-#     ax.plot(S.V[:,i], color='blue', alpha=0.3)
-#
-# ax.set_xlabel('Time')
-# ax.set_ylabel('V')
-#
-# plt.tight_layout()
-# plt.grid()
+"""
+Trajectories
+"""
 
+fig, ax = plt.subplots()
+
+for i in range(batch_size):
+    ax.plot(S.V[:,i], color='blue', alpha=0.3)
+
+ax.set_xlabel('Time')
+ax.set_ylabel('V')
+
+plt.tight_layout()
+plt.grid()
 plt.show()

@@ -1,4 +1,5 @@
 import numpy as np
+from copy import deepcopy
 from scipy.stats import norm
 
 class Brownian:
@@ -76,7 +77,7 @@ class Brownian:
 
 class StationaryOU:
 
-    def __init__(self, nsteps, tau, sigma, dt=0.001, dv=0.001, batch_size=1, v_max=1, V_R=0, dtype=np.float32):
+    def __init__(self, nsteps, tau, sigma, dt=0.001, dv=0.001, batch_size=1, v_max=1, V_R=-1, dtype=np.float32):
 
         """
 
@@ -115,42 +116,30 @@ class StationaryOU:
         self.batch_size = batch_size
         self.v_max = v_max
         self.dv = dv
-        self.n_v = int(round(self.v_max/dv))
-        self._V = np.linspace(0, self.v_max, self.n_v)
+        self.n_v = int(round(2*self.v_max/self.dv))
+        self._V = np.linspace(-self.v_max, self.v_max, self.n_v)
 
         #Arrays for simulation history
         self.V = np.zeros((self.nsteps, self.batch_size))
-        self.P_A = np.zeros((len(self._V), self.nsteps))
-        self.P_N = np.zeros((len(self._V), self.nsteps))
-
-    def solve_fp_numeric(self):
-
-        """
-
-        Solve the following Fokker-Planck equation using central finite differences
-
-        dP/dt = alpha*d/dV[V*P] + (sigma^2/2)*d^2/dV^2(P)
-
-        Enforce boundary conditions P(0) = 0 and P(vmax) = 0.
-
-        """
-
-        self.P_N[:,0] = 1
-        for n in range(1, self.nsteps):
-            for v in range(1,self.n_v-1):
-                self.P_N[v,t] = self.P_N[v,t-1] -\
-                self.dt*self.alpha*(self.P_N[v,t]-self.P_N[v-1,t])/self.dv +\
-                self.dt*0.5*(self.sigma**2)*(self.P_N[v+1,t]-2*self.P_N[v,t]+self.P_N[v-1,t])/(self.dv**2)
-
+        self.P_S = np.zeros((self.n_v, self.nsteps)); self.P_S[0,:] = 1
+        self.P_A = deepcopy(self.P_S)
+        self.P_N = deepcopy(self.P_S)
 
     def solve_fp_analytic(self):
 
         for n in range(1, self.nsteps):
             var = (self.sigma**2/(2*self.alpha))*(1-np.exp(-2*self.alpha*n*self.dt))
             mu = self.V_R*np.exp(-self.alpha*n*self.dt)
-            P_t = np.sqrt(1/np.sqrt(2*np.pi*var))*np.exp(-((self._V-mu)**2)/(2*var))
+            P_t = np.sqrt(1/(2*np.pi*var))*np.exp(-((self._V-mu)**2)/(2*var))
             self.P_A[:,n] = P_t
         return self.P_A
+
+    def histogram(self):
+
+        for i in range(self.nsteps):
+            vals, bins = np.histogram(self.V[i,:], bins=self.n_v, range=(-self.v_max,self.v_max), density=False)
+            self.P_S[:,i] = vals/(np.sum(vals)*self.dv)
+
 
     def forward(self):
 
