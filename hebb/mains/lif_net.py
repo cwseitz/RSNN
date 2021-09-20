@@ -11,7 +11,7 @@ p_xx = np.array([[0.2,0.2],
                  [0.2,0.2]])
 nsteps = 1000
 dt = 1
-batches = 1
+batches = 100
 
 spikes = Poisson(n_in, nsteps, dt=dt, batches=batches).run_generator()
 net = ExInLIF(n_in, n_rec, p_xx, nsteps, tau=1, p_e=p_e, batches=batches)

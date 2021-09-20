@@ -1,3 +1,3 @@
-from .conn import *
-from .models import *
-from .lif import *
+from .network import *
+from .neuron import *
+from .stat import *

@@ -1,5 +1,5 @@
 import numpy as np
-from ..models.conn import *
+from ..models.network import *
 
 class FokkerPlanck1D:
 
