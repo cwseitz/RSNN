@@ -4,6 +4,15 @@ from matplotlib import cm
 from hebb.util import *
 from hebb.models import *
 
+##################################################
+## Main script for simulating a network of
+## Leaky Integrate and Fire (LIF) neurons
+##################################################
+## Author: Clayton Seitz
+## Copyright: 2021, The Hebb Project
+## Email: cwseitz@uchicago.edu
+##################################################
+
 n_in = 100
 n_rec = 100
 p_e = 1.0

@@ -5,6 +5,16 @@ from matplotlib import cm
 from hebb.util import *
 from hebb.models import *
 
+##################################################
+## Main script for simulating an Ornstein-Uhlenbeck
+## process with non-stationary Gaussian noise
+##################################################
+## Author: Clayton Seitz
+## Copyright: 2021, The Hebb Project
+## Email: cwseitz@uchicago.edu
+##################################################
+
+
 nsteps = 1000
 dt = 0.002
 V_R = 0

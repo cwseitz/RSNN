@@ -5,6 +5,15 @@ from matplotlib import cm
 from hebb.util import *
 from hebb.models import *
 
+##################################################
+## Main script for simulating Brownian motion
+## i.e. a Wiener Process
+##################################################
+## Author: Clayton Seitz
+## Copyright: 2021, The Hebb Project
+## Email: cwseitz@uchicago.edu
+##################################################
+
 nsteps = 1000
 dt = 0.001
 V0 = 5

@@ -2,6 +2,19 @@ import numpy as np
 from copy import deepcopy
 from scipy.stats import norm
 
+################################################################################
+##
+##      Statistical models that can be used for comparisons with
+##      real network simulations for arbitrary parameterizations
+##
+################################################################################
+
+################################################################################
+## Author: Clayton Seitz
+## Copyright: 2021, The Hebb Project
+## Email: cwseitz@uchicago.edu
+################################################################################
+
 class Brownian:
 
     def __init__(self, V0, nsteps, dt, sigma, batch_size=1, dtype=np.float32):

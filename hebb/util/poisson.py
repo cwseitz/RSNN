@@ -11,7 +11,7 @@ class Poisson:
     rates : ndarray
         A matrix - each value providing the firing rate for a single input unit
         By default, generate an ensemble of homogeneous poisson processes
-        with rate equal to 20Hz
+        with rate 20Hz
 
     Returns
     -------
@@ -21,16 +21,17 @@ class Poisson:
 
     """
 
-    def __init__(self, n_in, nsteps, dt=0.01, batches=1, rates=None):
+    def __init__(self, t, n_in, batches=1, rates=None):
 
         self.n_in = n_in
-        self.nsteps = nsteps
-        self.dt = dt #seconds
+        self.nsteps = len(t)
+        self.t = t
+        self.dt = np.mean(np.diff(self.t))
         self.batches = batches
-        self.def_rate = 0.2 #default rate (Hz)
+        self.r0 = 0.2 #default rate (Hz)
 
         if rates is None:
-            rates = self.def_rate*np.ones((self.n_in, self.batches, self.nsteps))
+            rates = self.r0*np.ones((self.n_in, self.batches, self.nsteps))
 
         self.rates = rates
 

@@ -4,11 +4,32 @@ import matplotlib.pyplot as plt
 from hebb.util import *
 from hebb.models import *
 
-dt = 0.1
-batches = 2
-t = sp.arange(0.0, 50.0, dt)
-input = 0.1*(t>10) - 0.1*(t>20) + 0.35*(t>30) - 0.35*(t>40)
-input *= 5
+##################################################
+## Main script for simulating a single Leaky
+## Integrate and Fire (LIF) neuron model
+##################################################
+## Author: Clayton Seitz
+## Copyright: 2021, The Hebb Project
+## Email: cwseitz@uchicago.edu
+##################################################
 
-lif = LIF(t, batches=batches)
-lif.call(input, plot=True)
+dt = 0.1
+batches = 10
+N = 100
+t = np.arange(0.0, 100, dt)
+
+# #Generate input tensor (N, batches, time)
+# input = np.zeros((N, batches, len(t)))
+# input[:,:,1000:2000] = 0.2
+# input[:,:,3000:4000] = 0.1
+
+#Generate input spikes
+N_x = 100
+X = Poisson(t, N_x).run_generator()
+
+lif = LIF(t, N=N, X=X, batches=batches)
+lif.call()
+lif.plot_activity()
+lif.plot_unit()
+lif.plot_input_stats()
+plt.show()
