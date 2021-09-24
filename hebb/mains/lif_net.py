@@ -13,30 +13,28 @@ from hebb.models import *
 ## Email: cwseitz@uchicago.edu
 ##################################################
 
-n_in = 100
-n_rec = 100
-p_e = 1.0
-p_xx = np.array([[0.2,0.2],
-                 [0.2,0.2]])
-nsteps = 1000
-dt = 1
-batches = 100
+mx_lvl = 8
+E = 2
+sz_cl = 7
+N = 2**mx_lvl
+dt = 0.001
+t = np.arange(0, 1, dt)
+batches = 1
 
-spikes = Poisson(n_in, nsteps, dt=dt, batches=batches).run_generator()
-net = ExInLIF(n_in, n_rec, p_xx, nsteps, tau=1, p_e=p_e, batches=batches)
-v,z,r = net.call(spikes)
+cmg = InputConnectivityGenerator(N)
+W = cmg.run_generator()
+spikes = Poisson(t, N, batches=batches, random_select=200).run_generator()
 
-batch_ind = 0
-fig, ax = plt.subplots()
-ax.imshow(spikes[:,batch_ind,:], cmap='gray')
+f = FractalConnect(mx_lvl, E, sz_cl)
+colors = ['cornflowerblue', 'salmon']
+J, k = f.run_generator()
+f.plot(colors=colors)
 
-fig, ax = plt.subplots(3,1, sharex=True, sharey=True)
-
-ax[0].imshow(v[:,batch_ind,:], cmap='gray')
-ax[1].imshow(z[:,batch_ind,:], cmap='gray')
-ax[2].imshow(r[:,batch_ind,:], cmap='gray')
-
-plot_input_statistics(v, bins=10)
-plot_voltage_statistics(v, bins=10)
-
+lif = LIF(t, N, batches=batches, X=spikes, g_l=1, tau=1)
+lif.W = W
+lif.J = J
+lif.plot_weights()
+lif.call()
+lif.plot_activity()
+lif.plot_input_stats()
 plt.show()

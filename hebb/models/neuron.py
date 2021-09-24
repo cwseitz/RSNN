@@ -79,24 +79,14 @@ class Neuron:
         self.batches = batches
 
         if input is None:
-            self.connect()
+            pass
         else:
             if self.input.shape != (self.N, self.batches, self.nsteps):
                 raise ValueError('Input shape is not (N, batches, nsteps)')
 
-    def connect(self):
-
-        """
-        Generate network connectivity
-        """
-
-        self.J = np.random.normal(0,1,size=(self.N, self.N))
-        self.W = np.random.normal(0,1,size=(self.N,self.X.shape[0]))
-
-
 class LIF(Neuron):
 
-    def __init__(self, t, N=1, batches=1, X=None, input=None, c_m=1.0, g_L=0.3, thr=0.615, tau_ref=3, dtype=np.float32):
+    def __init__(self, t, N=1, batches=1, X=None, input=None, tau=1.0, g_l=1.0, thr=0.615, tau_ref=3, dtype=np.float32):
 
         super(LIF, self).__init__(t, N=N, batches=batches, X=X, input=input, dtype=dtype)
 
@@ -113,14 +103,16 @@ class LIF(Neuron):
             Number of neurons to simulate
         batches : int
             Number of stimulations to run
-        c_m : float
-            Capacitance of the membrane per unit area in [uF/cm^2]
-        g_L : float
-            Leak conductance per unit area in [mS/cm^2]
+        tau : float
+            Membrane time constant (tau = RC)
+        g_l : float
+            The leak conductance of the membrane
         thr : float
             Firing threshold
         tau_ref : int
             An integer n s.t. refactory time is equal to n*dt
+        X : ndarray, optional
+            Input spike train
         input: ndarray, optional
             Input current per unit area. For examination of one or more neurons
             response to known input current(s) (defaults to None).
@@ -131,10 +123,12 @@ class LIF(Neuron):
 
         #LIF specific parameters
 
-        self.g_L = g_L
-        self.c_m = c_m
+        self.g_l = g_l
+        self.tau = tau
         self.tau_ref = tau_ref
         self.thr = thr
+        self.J = None
+        self.W = None
 
     def spike_function(self, v):
         z = (v > self.thr).astype('int')
@@ -155,6 +149,9 @@ class LIF(Neuron):
 
     def call(self):
 
+        if self.J is None or self.W is None:
+            raise ValueError('Recurrent and input connectivity were not set')
+
         self.zero_state()
 
         for i in range(self.tau_ref-1, self.nsteps+self.tau_ref):
@@ -167,8 +164,8 @@ class LIF(Neuron):
                 i_re = np.matmul(self.J, self.Z[:,:,i-1])
                 self.I[:,:,i] =  i_in + i_re
 
-            self.V[:,:,i] = self.V[:,:,i-1] + self.dt*(-self.g_L*self.V[:,:,i-1] +\
-                            self.I[:,:,i])/self.c_m
+            self.V[:,:,i] = self.V[:,:,i-1] + (-self.dt*self.V[:,:,i-1]/self.tau +\
+                            self.I[:,:,i])/(self.tau*self.g_l)
             self.V = self.V - self.V*self.R
 
             #apply spike function to current time step
@@ -183,7 +180,7 @@ class LIF(Neuron):
 
     def plot_activity(self, batch=0):
 
-        fig, ax = plt.subplots(4,1, sharex=True)
+        fig, ax = plt.subplots(3,1, sharex=True)
 
         nu_n = np.sum(self.Z[:,batch,self.tau_ref:], axis=0)/self.N
         nu_x = np.sum(self.X[:,batch,:], axis=0)/self.X.shape[0]
@@ -194,10 +191,10 @@ class LIF(Neuron):
         ax[0].set_ylabel('N')
         ax[1].set_ylabel('N')
         ax[2].set_ylabel('X')
-        ax[3].set_xlabel('Time')
-        ax[3].plot(nu_n, color='red', label='Primary')
-        ax[3].plot(nu_x, color='blue', label='Input')
-        ax[3].set_ylabel('A(t)')
+        # ax[3].set_xlabel('Time (ms)')
+        # ax[3].plot(nu_n, color='red', label='Primary')
+        # ax[3].plot(nu_x, color='blue', label='Input')
+        # ax[3].set_ylabel('A(t)')
         plt.legend()
 
     def plot_input_stats(self, bins=10):
@@ -371,7 +368,168 @@ class LIF(Neuron):
 #             #check if the neuron spiked in the last tau_ref time steps
 #             self.R[:,:,i] = np.sum(self.Z[:,:,i-self.tau_ref:i], axis=-1)
 #
+#             #set inpu
+# class HodgkinHuxley(Neuron):
+#
+#     def __init__(self, t, batches=1, c_m=1.0, g_L=0.3, g_Na=120.0, g_K=36.0, E_Na=50.0, E_K=-77.0, E_L=-54.387, input=None, dtype=np.float32):
+#
+#         super(HodgkinHuxley, self).__init__(t, input, batches, dtype)
+#
+#         """
+#
+#         Hodgkin-Huxley neuron model
+#
+#         Parameters
+#         ----------
+#
+#         t: 1D ndarray
+#             A 1-dimensional numpy array containing time steps
+#         batches : **Currently not implemented
+#         c_m : float, optional
+#             Capacitance of the membrane per unit area in [uF/cm^2]
+#         g_L : float, optional
+#             Leak conductance per unit area in [mS/cm^2]
+#         g_K : float, optional
+#             Potassium conductance per unit area in [mS/cm^2]
+#         g_Na : float, optional
+#             Sodium conductance per unit area in [mS/cm^2]
+#         E_L : float, optional
+#             Leak reversal potential [mV]
+#         E_K : float, optional
+#             Potassium reversal potential [mV]
+#         E_Na : float, optional
+#             Sodium reversal potential [mV]
+#         input: ndarray, optional
+#             Input current per unit area.
+#             For examination of one or more neurons response to known input current(s)
+#             (defaults to None)
+#         dtype : numpy data type, optional
+#             Data type to use for neuron state variables
+#
+#         """
+#
+#         self.c_m = c_m
+#         self.g_Na = g_Na
+#         self.g_K = g_K
+#         self.g_L = g_L
+#         self.E_Na = E_Na
+#         self.E_K = E_K
+#         self.E_L = E_L
+#
+#     def alpha_m(self, V):
+#         """Channel gating kinetics. Functions of membrane voltage"""
+#         return 0.1*(V+40.0)/(1.0 - sp.exp(-(V+40.0) / 10.0))
+#
+#     def beta_m(self, V):
+#         """Channel gating kinetics. Functions of membrane voltage"""
+#         return 4.0*sp.exp(-(V+65.0) / 18.0)
+#
+#     def alpha_h(self, V):
+#         """Channel gating kinetics. Functions of membrane voltage"""
+#         return 0.07*sp.exp(-(V+65.0) / 20.0)
+#
+#     def beta_h(self, V):
+#         """Channel gating kinetics. Functions of membrane voltage"""
+#         return 1.0/(1.0 + sp.exp(-(V+35.0) / 10.0))
+#
+#     def alpha_n(self, V):
+#         """Channel gating kinetics. Functions of membrane voltage"""
+#         return 0.01*(V+55.0)/(1.0 - sp.exp(-(V+55.0) / 10.0))
+#
+#     def beta_n(self, V):
+#         """Channel gating kinetics. Functions of membrane voltage"""
+#         return 0.125*sp.exp(-(V+65) / 80.0)
+#
+#     def I_Na(self, V, m, h):
+#         return self.g_Na * m**3 * h * (V - self.E_Na)
+#
+#     def I_K(self, V, n):
+#         return self.g_K  * n**4 * (V - self.E_K)
+#
+#     def I_L(self, V):
+#         return self.g_L * (V - self.E_L)
+#
+#     def zero_state(self):
+#
+#         #Initialize state variables
+#         self.V = np.zeros_like(self.input, dtype=self.dtype)
+#         self.m = np.zeros_like(self.input, dtype=self.dtype)
+#         self.n = np.zeros_like(self.input, dtype=self.dtype)
+#         self.h = np.zeros_like(self.input, dtype=self.dtype)
+#
+#         self.V[0] = -65
+#         self.m[0] = 0.05
+#         self.h[0] = 0.6
+#         self.n[0] = 0.32
+#
+#     @staticmethod
+#     def dALLdt(X, t, self):
+#
+#         V, m, h, n = X
+#
+#         dVdt = (self.I_inj(t) - self.I_Na(V, m, h) - self.I_K(V, n) - self.I_L(V)) / self.c_m
+#         dmdt = self.alpha_m(V)*(1.0-m) - self.beta_m(V)*m
+#         dhdt = self.alpha_h(V)*(1.0-h) - self.beta_h(V)*h
+#         dndt = self.alpha_n(V)*(1.0-n) - self.beta_n(V)*n
+#         return dVdt, dmdt, dhdt, dndt
+#
+#     def call(self):
+#
+#         self.Zero_state()
+#
+#         """
+#         Integrate neuron model
+#         """
+#
+#         for i,t in enumerate(self.t[self.tau_ref:]):
+#
+#             #check if the neuron spiked in the last tau_ref time steps
+#             self.R[:,:,i] = np.sum(self.Z[:,:,i-self.tau_ref:i], axis=-1)
+#
 #             #set input current
+#             if self.input is None:
+#                 pass
+#             else:
+#                 i_in = (self.input[:,:,i]-self.I_Na(self.V[:,:,i], self.m, self.h)-\
+#                 self.I_K(self.V[:,:,i], n)-self.I_L(self.V[:,:,i]))/self.c_m
+#
+#             self.V[:,:,i] = self.V[:,:,i-1] + self.dt*x
+#             self.V = self.V - self.V*self.R
+#
+#             #apply spike function to current time step
+#             self.Z[:,:,i] = self.spike_function(self.V[:,:,i])
+#
+#     def plot(self):
+#
+#         plt.figure()
+#
+#         plt.subplot(4,1,1)
+#         plt.title('Hodgkin-Huxley Neuron')
+#         plt.plot(self.t, self.V, 'k')
+#         plt.ylabel('V (mV)')
+#
+#         plt.subplot(4,1,2)
+#         plt.plot(self.t, self.ina, 'c', label='$I_{Na}$')
+#         plt.plot(self.t, self.ik, 'y', label='$I_{K}$')
+#         plt.plot(self.t, self.il, 'm', label='$I_{L}$')
+#         plt.ylabel('Current')
+#         plt.legend()
+#
+#         plt.subplot(4,1,3)
+#         plt.plot(self.t, self.m, 'r', label='m')
+#         plt.plot(self.t, self.h, 'g', label='h')
+#         plt.plot(self.t, self.n, 'b', label='n')
+#         plt.ylabel('Gating Value')
+#         plt.legend()
+#
+#         plt.subplot(4,1,4)
+#         plt.plot(self.t, self.input, 'k')
+#         plt.xlabel('t (ms)')
+#         plt.ylabel('$I_{inj}$ ($\\mu{A}/cm^2$)')
+#         plt.ylim(-1, 40)
+#
+#         plt.tight_layout()
+
 #             if self.input is None:
 #                 pass
 #             else:
