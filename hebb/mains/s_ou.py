@@ -14,14 +14,15 @@ from hebb.models import *
 ## Email: cwseitz@uchicago.edu
 ##################################################
 
-nsteps = 1000
+# nsteps = 1000
 dt = 0.002
+t = np.arange(0,2,dt)
 tau = 0.1
 sigma = 1
 batch_size = 1000
 v_max = 1
 
-S = StationaryOU(nsteps, tau, sigma, batch_size=batch_size, dv=0.1, v_max=v_max)
+S = StationaryOU(t, tau, sigma, batch_size=batch_size, dv=0.1, v_max=v_max)
 S.forward()
 S.solve_fp_analytic()
 S.histogram()
@@ -34,18 +35,19 @@ steps = [100, 200, 999]
 
 fig, ax = plt.subplots()
 
-ax.plot(S._V, S.P_A[:,steps[0]], color='red', label='0ms', linestyle='--')
-ax.plot(S._V, S.P_A[:,steps[1]], color='blue', label='100ms', linestyle='--')
-ax.plot(S._V, S.P_A[:,steps[2]], color='cyan', label='200ms', linestyle='--')
+ax.plot(S._V, S.P_A[:,steps[0]], color='red', linestyle='--',)
+ax.plot(S._V, S.P_A[:,steps[1]], color='blue', linestyle='--')
+ax.plot(S._V, S.P_A[:,steps[2]], color='cyan', label='FP - 200ms', linestyle='--')
 
-ax.plot(S._V, S.P_S[:,steps[0]], color='red', label='0ms')
-ax.plot(S._V, S.P_S[:,steps[1]], color='blue', label='100ms')
-ax.plot(S._V, S.P_S[:,steps[2]], color='cyan', label='200ms')
+ax.plot(S._V, S.P_S[:,steps[0]], color='red')
+ax.plot(S._V, S.P_S[:,steps[1]], color='blue')
+ax.plot(S._V, S.P_S[:,steps[2]], color='cyan', label='Sim - 200ms')
 
 ax.set_xlim([-v_max, v_max])
-ax.set_xlabel('V')
-ax.set_ylabel('P(V)')
+ax.set_xlabel('X')
+ax.set_ylabel('P(X)')
 plt.tight_layout()
+plt.legend()
 plt.grid()
 
 """
@@ -55,7 +57,7 @@ Trajectories
 fig, ax = plt.subplots()
 
 for i in range(batch_size):
-    ax.plot(S.V[:,i], color='blue', alpha=0.3)
+    ax.plot(t, S.V[:,i], color='gray', alpha=0.3)
 
 ax.set_xlabel('Time')
 ax.set_ylabel('V')

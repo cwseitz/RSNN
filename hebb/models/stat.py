@@ -90,7 +90,7 @@ class Brownian:
 
 class StationaryOU:
 
-    def __init__(self, nsteps, tau, sigma, dt=0.001, dv=0.001, batch_size=1, v_max=1, V_R=-1, dtype=np.float32):
+    def __init__(self, t, tau, sigma, dv=0.001, batch_size=1, v_max=1, V_R=-1, dtype=np.float32):
 
         """
 
@@ -121,8 +121,8 @@ class StationaryOU:
         """
 
         #Params
-        self.nsteps = nsteps
-        self.dt = dt
+        self.nsteps = len(t)
+        self.dt = np.mean(np.diff(t))
         self.V_R = V_R
         self.alpha = 1/tau
         self.sigma = sigma

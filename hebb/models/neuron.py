@@ -149,8 +149,9 @@ class LIF(Neuron):
 
     def call(self):
 
-        if self.J is None or self.W is None:
-            raise ValueError('Recurrent and input connectivity were not set')
+        if input is None:
+            if self.J is None or self.W is None:
+                raise ValueError('Recurrent and input connectivity were not set')
 
         self.zero_state()
 

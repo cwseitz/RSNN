@@ -18,18 +18,18 @@ batches = 10
 N = 100
 t = np.arange(0.0, 100, dt)
 
-# #Generate input tensor (N, batches, time)
+#Generate input tensor (N, batches, time)
 # input = np.zeros((N, batches, len(t)))
 # input[:,:,1000:2000] = 0.2
 # input[:,:,3000:4000] = 0.1
 
-#Generate input spikes
-N_x = 100
-X = Poisson(t, N_x).run_generator()
+input = np.random.normal(2, 0.1, size=(N, batches, len(t)))
 
-lif = LIF(t, N=N, X=X, batches=batches)
+#Generate input spikes
+# N_x = 100
+# X = Poisson(t, N_x).run_generator()
+
+lif = LIF(t, N=N, input=input, batches=batches)
 lif.call()
-lif.plot_activity()
 lif.plot_unit()
-lif.plot_input_stats()
 plt.show()
