@@ -181,7 +181,7 @@ class LIF(Neuron):
 
     def plot_activity(self, batch=0):
 
-        fig, ax = plt.subplots(3,1, sharex=True)
+        fig, ax = plt.subplots(4,1, sharex=True)
 
         nu_n = np.sum(self.Z[:,batch,self.tau_ref:], axis=0)/self.N
         nu_x = np.sum(self.X[:,batch,:], axis=0)/self.X.shape[0]
@@ -192,24 +192,21 @@ class LIF(Neuron):
         ax[0].set_ylabel('N')
         ax[1].set_ylabel('N')
         ax[2].set_ylabel('X')
-        # ax[3].set_xlabel('Time (ms)')
-        # ax[3].plot(nu_n, color='red', label='Primary')
-        # ax[3].plot(nu_x, color='blue', label='Input')
-        # ax[3].set_ylabel('A(t)')
+        ax[3].set_xlabel('Time (ms)')
+        ax[3].plot(nu_n, color='red', label='Primary')
+        ax[3].plot(nu_x, color='blue', label='Input')
+        ax[3].set_ylabel('A(t)')
         plt.legend()
 
     def plot_input_stats(self, bins=10):
 
-        fig, ax = plt.subplots(4,1)
+        """
+        Input current distribution over batches
+        """
 
-        mu = np.mean(self.I, axis=(0,1))
-        var = np.std(self.I, axis=(0,1))**2
-
-        ax[0].plot(mu, color='red')
-        ax[1].plot(var, color='blue')
-        ax[2].hist(mu, bins=100, color='red')
-        ax[3].hist(var, bins=100, color='blue')
-        plt.tight_layout()
+        fig, ax = plt.subplots()
+        ax.scatter(self.I[10,:,:].flatten(), self.I[11,:,:].flatten())
+        plt.show()
 
     def plot_voltage_stats(self, bins=10):
 

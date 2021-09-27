@@ -14,29 +14,33 @@ from hebb.models import *
 ## Email: cwseitz@uchicago.edu
 ##################################################
 
-mx_lvl = 8
-E = 2
-sz_cl = 5
-N = 2**mx_lvl
+
+n_excite = 800
+n_inhib = 200
+p_ee, p_ei, p_ie, p_ii = [0.5, 0.1, 0.1, 0.5]
+
 dt = 0.001
 t = np.arange(0, 1, dt)
 batches = 1
+mu = -0.64
+sigma = 0.51
 
+N = 1000
 cmg = InputConnectivityGenerator(N)
 W = cmg.run_generator()
-spikes = Poisson(t, N, batches=batches, random_select=200).run_generator()
+spikes = Poisson(t, N, batches=batches).run_generator()
+W.plot()
 
-f = FractalConnect(mx_lvl, E, sz_cl)
-colors = ['cornflowerblue', 'salmon', 'black', 'gray']
-J, k = f.run_generator()
+f = BrunelNetwork(n_excite, n_inhib, p_ee, p_ei, p_ie, p_ii, mu, sigma)
+f.run_generator()
+f.make_weighted()
+f.plot()
 
-f.plot(colors=colors)
-
-lif = LIF(t, N, batches=batches, X=spikes, g_l=1, tau=1)
-lif.W = W
-lif.J = J
-lif.plot_weights()
+# lif = LIF(t, N, batches=batches, X=spikes, g_l=1, tau=1)
+# lif.W = W
+# lif.J = f.CIJ
 # lif.call()
 # lif.plot_activity()
+# lif.plot_unit()
 # lif.plot_input_stats()
-plt.show()
+# plt.show()

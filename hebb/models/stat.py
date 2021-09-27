@@ -17,7 +17,7 @@ from scipy.stats import norm
 
 class Brownian:
 
-    def __init__(self, V0, nsteps, dt, sigma, batch_size=1, dtype=np.float32):
+    def __init__(self, t, V0, sigma, batch_size=1, dtype=np.float32):
 
         """
 
@@ -26,9 +26,10 @@ class Brownian:
 
         """
 
+        self.t = t
         self.V0 = V0
-        self.nsteps = nsteps
-        self.dt = dt
+        self.nsteps = len(t)
+        self.dt = np.mean(np.diff(t))
         self.sigma = sigma
         self.batch_size = batch_size
         self.V = []

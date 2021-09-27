@@ -23,7 +23,7 @@ t = np.arange(0.0, 100, dt)
 # input[:,:,1000:2000] = 0.2
 # input[:,:,3000:4000] = 0.1
 
-input = np.random.normal(2, 0.1, size=(N, batches, len(t)))
+input = np.random.normal(0, 0.2, size=(N, batches, len(t)))
 
 #Generate input spikes
 # N_x = 100

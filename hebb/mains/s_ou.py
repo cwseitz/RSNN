@@ -14,7 +14,6 @@ from hebb.models import *
 ## Email: cwseitz@uchicago.edu
 ##################################################
 
-# nsteps = 1000
 dt = 0.002
 t = np.arange(0,2,dt)
 tau = 0.1
