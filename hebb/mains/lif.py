@@ -5,7 +5,7 @@ from hebb.util import *
 from hebb.models import *
 
 ##################################################
-## Main script for simulating a single Leaky
+## Main script for testing a single Leaky
 ## Integrate and Fire (LIF) neuron model
 ##################################################
 ## Author: Clayton Seitz
@@ -13,23 +13,18 @@ from hebb.models import *
 ## Email: cwseitz@uchicago.edu
 ##################################################
 
-dt = 0.1
-batches = 10
-N = 100
-t = np.arange(0.0, 100, dt)
+batches = 1 #number of trials
+N = 1 #number of neurons
+
+dt = 0.001 #1ms
+T = 0.02 #10ms
+tau_ref = 0.003 #3ms
 
 #Generate input tensor (N, batches, time)
-# input = np.zeros((N, batches, len(t)))
-# input[:,:,1000:2000] = 0.2
-# input[:,:,3000:4000] = 0.1
+input = np.zeros((N, batches, int(round(T/dt))+1))
+input[:,:,5:12] = 0.7
 
-input = np.random.normal(0, 0.2, size=(N, batches, len(t)))
-
-#Generate input spikes
-# N_x = 100
-# X = Poisson(t, N_x).run_generator()
-
-lif = LIF(t, N=N, input=input, batches=batches)
+lif = LIF(T, dt, tau_ref, N=N, input=input, batches=batches)
 lif.call()
 lif.plot_unit()
 plt.show()

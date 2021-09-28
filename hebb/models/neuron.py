@@ -40,7 +40,7 @@ from .network import *
 
 class Neuron:
 
-    def __init__(self, t, N=1, batches=1, X=None, input=None, dtype=np.float32):
+    def __init__(self, T, dt, tau_ref, N=1, batches=1, X=None, input=None, dtype=np.float32):
 
         """
 
@@ -51,6 +51,8 @@ class Neuron:
 
         t: 1D ndarray
             A 1-dimensional numpy array containing time steps
+        tau_ref: float,
+            Refractory period expressed as a multiplier of dt
         X : ndarray
             Input spikes
         N: int
@@ -69,9 +71,11 @@ class Neuron:
             raise ValueError('Neither input currents nor input spikes were specified')
 
         #Basic parameters
-        self.dt = np.mean(np.diff(t))
-        self.t = t
-        self.nsteps = len(self.t)
+        self.dt = dt #time resolution
+        self.T = T #period
+        self.tau_ref = tau_ref
+        self.nsteps = 1 + int(round((self.T + self.tau_ref)/dt)) #number of 'cuts'
+        self.ref_steps = int(self.tau_ref/self.dt)
         self.N = N
         self.dtype = dtype
         self.input = input
@@ -81,14 +85,14 @@ class Neuron:
         if input is None:
             pass
         else:
-            if self.input.shape != (self.N, self.batches, self.nsteps):
-                raise ValueError('Input shape is not (N, batches, nsteps)')
+            if self.input.shape != (self.N, self.batches, self.nsteps-self.ref_steps):
+                raise Exception('Bad input shape')
 
 class LIF(Neuron):
 
-    def __init__(self, t, N=1, batches=1, X=None, input=None, tau=1.0, g_l=1.0, thr=0.615, tau_ref=3, dtype=np.float32):
+    def __init__(self, T, dt, tau_ref, N=1, batches=1, X=None, input=None, tau=1.0, g_l=1.0, thr=0.615, dtype=np.float32):
 
-        super(LIF, self).__init__(t, N=N, batches=batches, X=X, input=input, dtype=dtype)
+        super(LIF, self).__init__(T, dt, tau_ref, N=N, batches=batches, X=X, input=input, dtype=dtype)
 
         """
 
@@ -125,27 +129,26 @@ class LIF(Neuron):
 
         self.g_l = g_l
         self.tau = tau
-        self.tau_ref = tau_ref
         self.thr = thr
         self.J = None
         self.W = None
 
     def spike_function(self, v):
-        z = (v > self.thr).astype('int')
+        z = (v >= self.thr).astype('int')
         return z
 
     def zero_state(self):
 
         #Initialize state variables
-        self.I = np.zeros(shape=(self.N, self.batches, self.nsteps+self.tau_ref), dtype=self.dtype)
-        self.V = np.zeros(shape=(self.N, self.batches, self.nsteps+self.tau_ref), dtype=self.dtype)
-        self.Z = np.zeros(shape=(self.N, self.batches, self.nsteps+self.tau_ref), dtype=np.int8)
-        self.R = np.zeros(shape=(self.N, self.batches, self.nsteps+self.tau_ref), dtype=np.int8)
+        self.I = np.zeros(shape=(self.N, self.batches, self.nsteps), dtype=self.dtype)
+        self.V = np.zeros(shape=(self.N, self.batches, self.nsteps), dtype=self.dtype)
+        self.Z = np.zeros(shape=(self.N, self.batches, self.nsteps), dtype=np.int8)
+        self.R = np.zeros(shape=(self.N, self.batches, self.nsteps), dtype=np.int8)
 
         if self.input is None:
             pass
         else:
-            self.I[:,:,self.tau_ref:] = self.input
+            self.I[:,:,self.ref_steps:] = self.input
 
     def call(self):
 
@@ -155,22 +158,27 @@ class LIF(Neuron):
 
         self.zero_state()
 
-        for i in range(self.tau_ref-1, self.nsteps+self.tau_ref):
-            #check if the neuron spiked in the last tau_ref time steps
-            self.R[:,:,i] = np.sum(self.Z[:,:,i-self.tau_ref:i], axis=-1)
-
+        start, end = self.ref_steps, self.nsteps
+        for i in range(start, end):
             #set input current if spikes were provided
             if self.input is None:
                 i_in = np.matmul(self.W, self.X[:,:,i-1-self.tau_ref])
                 i_re = np.matmul(self.J, self.Z[:,:,i-1])
                 self.I[:,:,i] =  i_in + i_re
 
-            self.V[:,:,i] = self.V[:,:,i-1] + (-self.dt*self.V[:,:,i-1]/self.tau +\
-                            self.I[:,:,i])/(self.tau*self.g_l)
-            self.V = self.V - self.V*self.R
+            #apply spike function to previous time step
+            self.Z[:,:,i] = self.spike_function(self.V[:,:,i-1])
 
-            #apply spike function to current time step
-            self.Z[:,:,i] = self.spike_function(self.V[:,:,i])
+            #check if the neuron spiked in the last tau_ref time steps
+            self.R[:,:,i] = np.sum(self.Z[:,:,i-self.ref_steps:i+1], axis=-1)
+
+            self.V[:,:,i] = self.V[:,:,i-1] - self.dt*self.V[:,:,i-1]/self.tau +\
+                            self.I[:,:,i-1]/(self.tau*self.g_l)
+
+            #Enforce refractory period
+            self.V[:,:,i] = self.V[:,:,i] - self.V[:,:,i]*self.R[:,:,i]
+
+
 
     def plot_weights(self):
 
@@ -229,22 +237,30 @@ class LIF(Neuron):
         #Plot input and state variables for a single unit in a single batch
         fig, ax = plt.subplots(4,1, sharex=True)
 
-        ax[0].plot(self.t, self.V[unit,batch,:self.nsteps], 'k')
-        ax[0].hlines(self.thr, self.t.min(), self.t.max(), color='red')
-        ax[0].hlines(0, self.t.min(), self.t.max(), color='blue')
-        ax[0].set_ylabel('V (mV)')
+        ax[1].plot(self.V[unit,batch,self.ref_steps:], 'k')
+        #ax[0].hlines(self.thr, self.t.min(), self.t.max(), color='red')
+        #ax[0].hlines(0, self.t.min(), self.t.max(), color='blue')
+        ax[1].set_ylabel('V (mV)')
+        # ax[0].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
+        # ax[0].grid(which='both')
 
-        ax[1].plot(self.t, self.I[unit,batch,self.tau_ref:], 'k')
-        ax[1].set_xlabel('t (ms)')
-        ax[1].set_ylabel('$I$(t) ($\\mu{A}/cm^2$)')
+        ax[0].plot(self.I[unit,batch,self.ref_steps:], 'k')
+        # ax[1].set_xlabel('t (ms)')
+        # ax[1].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
+        ax[0].grid(which='both')
+        ax[0].set_ylabel('$I$(t) ($\\mu{A}/cm^2$)')
 
-        ax[2].plot(self.t, self.R[unit,batch,:self.nsteps], 'k')
-        ax[2].set_xlabel('t (ms)')
-        ax[2].set_ylabel('$R(t)$')
-
-        ax[3].plot(self.t, self.Z[unit,batch,:self.nsteps], 'k')
+        ax[3].plot(self.R[unit,batch,self.ref_steps:], 'k')
+        # ax[2].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
+        # ax[2].grid(which='both')
         ax[3].set_xlabel('t (ms)')
-        ax[3].set_ylabel('$Z(t)$')
+        ax[3].set_ylabel('$R(t)$')
+
+        ax[2].plot(self.Z[unit,batch,self.ref_steps:], 'k')
+        # ax[3].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
+        # ax[3].grid(which='both')
+        ax[2].set_xlabel('t (ms)')
+        ax[2].set_ylabel('$Z(t)$')
 
         plt.tight_layout()
 
