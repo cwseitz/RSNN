@@ -1,9 +1,8 @@
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
-from matplotlib import cm
-from scipy.integrate import odeint
 from .network import *
+from matplotlib import cm
 
 ################################################################################
 ##
@@ -28,7 +27,7 @@ from .network import *
 ##             that are a function of time. Do not try to use the same object
 ##             for both (1) and (2). Re-initialize.
 ##
-##     State variables are 3D tensors with shape (N, batches, nsteps)
+##     State variables are 3D tensors with shape (N, trials, time)
 ##
 ################################################################################
 
@@ -40,7 +39,7 @@ from .network import *
 
 class Neuron:
 
-    def __init__(self, T, dt, tau_ref, N=1, batches=1, X=None, input=None, dtype=np.float32):
+    def __init__(self, T, dt, tau_ref, J, trials=1, dtype=np.float32):
 
         """
 
@@ -49,50 +48,200 @@ class Neuron:
         Parameters
         ----------
 
-        t: 1D ndarray
-            A 1-dimensional numpy array containing time steps
-        tau_ref: float,
-            Refractory period expressed as a multiplier of dt
-        X : ndarray
-            Input spikes
-        N: int
-            Number of neurons to simulate
-        batches : int
+        T: float
+            Total simulation time in seconds
+        dt: float
+            Time resolution in seconds
+        tau_ref : float
+            Refractory time in seconds
+        J : 2D ndarray
+            Synaptic connectivity matrix
+        trials : int
             Number of stimulations to run
-        input: ndarray, optional
-            Input current per unit area.
-            For examination of one or more neurons response to known input current(s)
-            (defaults to None)
+        dtype : numpy data type
+            Data type to use for neuron state variables
 
         """
 
-        #Make sure either input spikes or input currents are specified
-        if X is None and input is None:
-            raise ValueError('Neither input currents nor input spikes were specified')
-
-        #Basic parameters
+        #Basic parameters common to all neurons
         self.dt = dt #time resolution
-        self.T = T #period
-        self.tau_ref = tau_ref
-        self.nsteps = 1 + int(round((self.T + self.tau_ref)/dt)) #number of 'cuts'
-        self.ref_steps = int(self.tau_ref/self.dt)
-        self.N = N
-        self.dtype = dtype
-        self.input = input
-        self.X = X
-        self.batches = batches
+        self.T = T #simulation period
+        self.trials = trials #number of trials
+        self.tau_ref = tau_ref #refractory period
+        self.nsteps = 1 + int(round((self.T/dt))) #number of 'cuts'
+        self.ref_steps = int(self.tau_ref/self.dt) #number of steps for refractory period
+        self.J = J #synaptic connectivity
+        self.N = self.J.shape[0]
+        self.dtype = dtype #data type
+        self.shape = (self.N,self.trials,self.nsteps)
 
-        if input is None:
-            pass
-        else:
-            if self.input.shape != (self.N, self.batches, self.nsteps-self.ref_steps):
-                raise Exception('Bad input shape')
+
+class ClampedLIF(Neuron):
+
+    def __init__(self,  T, dt, tau_ref, J, trials=1, tau=1.0, g_l=1.0, thr=0.615, dtype=np.float32):
+
+        super(ClampedLIF, self).__init__(T, dt, tau_ref, J=J, trials=trials, dtype=dtype)
+
+        """
+
+        Leaky Integrate & Fire (LIF) neuron model where a subset of the
+        neurons are clamped to user specified spike trains. This is useful
+        when you want an 'input population' to be part of the larger network
+
+        Parameters
+        ----------
+
+        T: float
+            Total simulation time in seconds
+        dt: float
+            Time resolution in seconds
+        tau_ref : float
+            Refractory time in seconds
+        J : 2D ndarray
+            Synaptic connectivity matrix
+        trials : int
+            Number of stimulations to run
+        tau : float
+            Membrane time constant
+        g_l : float
+            The leak conductance of the membrane
+        thr : float
+            Firing threshold
+        dtype : numpy data type
+            Data type to use for neuron state variables
+
+        """
+
+        #ClampedLIF specific parameters
+        self.tau = tau
+        self.g_l = g_l
+        self.thr = thr
+
+    def spike_function(self, v):
+        z = (v >= self.thr).astype('int')
+        return z
+
+    def zero_state(self):
+
+        #Initialize state variables
+        self.I = np.zeros(shape=self.shape, dtype=self.dtype)
+        self.V = np.zeros(shape=self.shape, dtype=self.dtype)
+        self.Z = np.zeros(shape=self.shape, dtype=np.int8)
+        self.R = np.zeros(shape=(self.N,self.trials,self.nsteps+self.ref_steps), dtype=np.int8)
+
+    def call(self, spikes, clamp):
+
+        """
+        clamp : 3D ndarray, optional
+            Used to clamp the observable state Z of specified neurons, often
+            to use a subnetwork as an 'input population'.
+        """
+
+        self.spikes = spikes
+        #invert clamp (see usage below)
+        self.clamp = np.mod(clamp + 1,2)
+        self.zero_state()
+
+        start, end = 1, self.nsteps
+
+        for i in range(start, end):
+
+            #enforce the clamp
+            self.Z[:,:,i-1] = self.Z[:,:,i-1]*self.clamp[:,:,i-1] + self.spikes[:,:,i-1]
+            self.I[:,:,i] =  np.matmul(self.J, self.Z[:,:,i-1])
+            #apply spike function to previous time step
+            self.Z[:,:,i] = self.spike_function(self.V[:,:,i-1])
+            #check if the neuron spiked in the last tau_ref time steps
+            self.R[:,:,i+self.ref_steps] = np.sum(self.Z[:,:,i-self.ref_steps:i+1], axis=-1)
+            self.V[:,:,i] = self.V[:,:,i-1] - self.dt*self.V[:,:,i-1]/self.tau +\
+                            self.I[:,:,i-1]/(self.tau*self.g_l)
+            #Enforce refractory period
+            self.V[:,:,i] = self.V[:,:,i] - self.V[:,:,i]*self.R[:,:,i+self.ref_steps]
+
+
+
+    def plot_weights(self):
+
+        fig, ax = plt.subplots(1,2)
+        ax[0].imshow(self.J, cmap='gray')
+        ax[1].imshow(self.W, cmap='gray')
+        plt.tight_layout()
+
+    def plot_activity(self, batch=0):
+
+        fig, ax = plt.subplots(3,1, sharex=True)
+
+        ax[0].imshow(self.V[:,batch,:], cmap='gray')
+        ax[1].imshow(np.mean(self.Z, axis=1), cmap='gray')
+        ax[2].imshow(self.spikes[:,batch,:], cmap='gray')
+        ax[0].set_ylabel('N')
+        ax[1].set_ylabel('N')
+        ax[2].set_ylabel('X')
+        plt.legend()
+
+    def plot_input_stats(self, bins=10):
+
+        """
+        Input current distribution over trials
+        """
+
+        fig, ax = plt.subplots()
+        ax.scatter(self.I[10,:,:].flatten(), self.I[11,:,:].flatten())
+        plt.show()
+
+    def plot_voltage_stats(self, bins=10):
+
+        fig, ax = plt.subplots()
+        colormap = cm.get_cmap('coolwarm')
+        colors = colormap(np.linspace(0, 1, self.nsteps))
+
+        #compute the histogram of values over (unit, batch) matrix
+        hist_arr, edges_arr = [], []
+        for t in range(self.nsteps):
+            hist, edges = np.histogram(self.V[:,:,t], bins=bins, density=True)
+            ax.plot(edges[:-1], hist, color=colors[t], alpha=0.5)
+
+        ax.set_xlabel('Voltage (a.u.)')
+        ax.set_ylabel('PDF')
+        plt.tight_layout()
+
+    def plot_unit(self, unit=0, batch=0):
+
+        #Plot input and state variables for a single unit in a single batch
+        fig, ax = plt.subplots(4,1, sharex=True)
+
+        ax[1].plot(self.V[unit,batch,self.ref_steps:], 'k')
+        #ax[0].hlines(self.thr, self.t.min(), self.t.max(), color='red')
+        #ax[0].hlines(0, self.t.min(), self.t.max(), color='blue')
+        ax[1].set_ylabel('V (mV)')
+        # ax[0].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
+        # ax[0].grid(which='both')
+
+        ax[0].plot(self.I[unit,batch,self.ref_steps:], 'k')
+        # ax[1].set_xlabel('t (ms)')
+        # ax[1].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
+        ax[0].grid(which='both')
+        ax[0].set_ylabel('$I$(t) ($\\mu{A}/cm^2$)')
+
+        ax[3].plot(self.R[unit,batch,self.ref_steps:], 'k')
+        # ax[2].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
+        # ax[2].grid(which='both')
+        ax[3].set_xlabel('t (ms)')
+        ax[3].set_ylabel('$R(t)$')
+
+        ax[2].plot(self.Z[unit,batch,self.ref_steps:], 'k')
+        # ax[3].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
+        # ax[3].grid(which='both')
+        ax[2].set_xlabel('t (ms)')
+        ax[2].set_ylabel('$Z(t)$')
+
+        plt.tight_layout()
 
 class LIF(Neuron):
 
-    def __init__(self, T, dt, tau_ref, N=1, batches=1, X=None, input=None, tau=1.0, g_l=1.0, thr=0.615, dtype=np.float32):
+    def __init__(self, T, dt, tau_ref, N=1, trials=1, X=None, input=None, tau=1.0, g_l=1.0, thr=0.615, dtype=np.float32):
 
-        super(LIF, self).__init__(T, dt, tau_ref, N=N, batches=batches, X=X, input=input, dtype=dtype)
+        super(LIF, self).__init__(T, dt, tau_ref, N=N, trials=trials, X=X, input=input, dtype=dtype)
 
         """
 
@@ -105,7 +254,7 @@ class LIF(Neuron):
             A 1-dimensional numpy array containing time steps
         N: int
             Number of neurons to simulate
-        batches : int
+        trials : int
             Number of stimulations to run
         tau : float
             Membrane time constant (tau = RC)
@@ -140,10 +289,10 @@ class LIF(Neuron):
     def zero_state(self):
 
         #Initialize state variables
-        self.I = np.zeros(shape=(self.N, self.batches, self.nsteps), dtype=self.dtype)
-        self.V = np.zeros(shape=(self.N, self.batches, self.nsteps), dtype=self.dtype)
-        self.Z = np.zeros(shape=(self.N, self.batches, self.nsteps), dtype=np.int8)
-        self.R = np.zeros(shape=(self.N, self.batches, self.nsteps), dtype=np.int8)
+        self.I = np.zeros(shape=(self.N, self.trials, self.nsteps), dtype=self.dtype)
+        self.V = np.zeros(shape=(self.N, self.trials, self.nsteps), dtype=self.dtype)
+        self.Z = np.zeros(shape=(self.N, self.trials, self.nsteps), dtype=np.int8)
+        self.R = np.zeros(shape=(self.N, self.trials, self.nsteps), dtype=np.int8)
 
         if self.input is None:
             pass
@@ -209,7 +358,7 @@ class LIF(Neuron):
     def plot_input_stats(self, bins=10):
 
         """
-        Input current distribution over batches
+        Input current distribution over trials
         """
 
         fig, ax = plt.subplots()
@@ -267,9 +416,9 @@ class LIF(Neuron):
 
 # class HodgkinHuxley(Neuron):
 #
-#     def __init__(self, t, batches=1, c_m=1.0, g_L=0.3, g_Na=120.0, g_K=36.0, E_Na=50.0, E_K=-77.0, E_L=-54.387, input=None, dtype=np.float32):
+#     def __init__(self, t, trials=1, c_m=1.0, g_L=0.3, g_Na=120.0, g_K=36.0, E_Na=50.0, E_K=-77.0, E_L=-54.387, input=None, dtype=np.float32):
 #
-#         super(HodgkinHuxley, self).__init__(t, input, batches, dtype)
+#         super(HodgkinHuxley, self).__init__(t, input, trials, dtype)
 #
 #         """
 #
@@ -280,7 +429,7 @@ class LIF(Neuron):
 #
 #         t: 1D ndarray
 #             A 1-dimensional numpy array containing time steps
-#         batches : **Currently not implemented
+#         trials : **Currently not implemented
 #         c_m : float, optional
 #             Capacitance of the membrane per unit area in [uF/cm^2]
 #         g_L : float, optional
@@ -385,9 +534,9 @@ class LIF(Neuron):
 #             #set inpu
 # class HodgkinHuxley(Neuron):
 #
-#     def __init__(self, t, batches=1, c_m=1.0, g_L=0.3, g_Na=120.0, g_K=36.0, E_Na=50.0, E_K=-77.0, E_L=-54.387, input=None, dtype=np.float32):
+#     def __init__(self, t, trials=1, c_m=1.0, g_L=0.3, g_Na=120.0, g_K=36.0, E_Na=50.0, E_K=-77.0, E_L=-54.387, input=None, dtype=np.float32):
 #
-#         super(HodgkinHuxley, self).__init__(t, input, batches, dtype)
+#         super(HodgkinHuxley, self).__init__(t, input, trials, dtype)
 #
 #         """
 #
@@ -398,7 +547,7 @@ class LIF(Neuron):
 #
 #         t: 1D ndarray
 #             A 1-dimensional numpy array containing time steps
-#         batches : **Currently not implemented
+#         trials : **Currently not implemented
 #         c_m : float, optional
 #             Capacitance of the membrane per unit area in [uF/cm^2]
 #         g_L : float, optional

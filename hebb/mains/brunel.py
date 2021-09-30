@@ -26,15 +26,16 @@ mu = -0.64
 sigma = 0.51
 
 N = 1000
-cmg = InputConnectivityGenerator(N)
-W = cmg.run_generator()
-spikes = Poisson(t, N, batches=batches).run_generator()
-W.plot()
+# cmg = InputConnectivityGenerator(N)
+# W = cmg.run_generator()
+# spikes = Poisson(t, N, batches=batches).run_generator()
+# W.plot()
 
 f = BrunelNetwork(n_excite, n_inhib, p_ee, p_ei, p_ie, p_ii, mu, sigma)
 f.run_generator()
 f.make_weighted()
 f.plot()
+plt.show()
 
 # lif = LIF(t, N, batches=batches, X=spikes, g_l=1, tau=1)
 # lif.W = W

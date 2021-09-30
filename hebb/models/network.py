@@ -127,7 +127,7 @@ class FractalNetwork:
         self.J0 = (prob > rng.random_sample((n, n)))
         k = np.sum(self.J0)
 
-        return np.array(self.J0, dtype=int), k
+        return np.array(self.J0, dtype=int)
 
     def level_mat(self):
         level_mat = np.zeros((2**self.mx_lvl,2**self.mx_lvl), dtype=np.int8)

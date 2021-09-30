@@ -22,30 +22,30 @@ class Poisson:
 
     """
 
-    def __init__(self, t, n_in, batches=1, random_select=None, rates=None):
+    def __init__(self, T, dt, N, trials=1, rates=None, random_select=None):
 
-        self.n_in = n_in
-        self.nsteps = len(t)
+        self.T = T
+        self.dt = dt
+        self.N = N
+        self.nsteps = 1 + int(round(T/dt))
         self.random_select = random_select
-        self.t = t
-        self.dt = np.mean(np.diff(self.t))
-        self.batches = batches
-        self.r0 = 20 #default rate (Hz)
+        self.trials = trials
 
         if rates is None:
-            rates = self.r0*np.ones((self.n_in, self.batches, self.nsteps))
+            self.r0 = 20 #default rate (Hz)
+            rates = self.r0*np.ones((self.N, self.trials, self.nsteps))
 
         self.rates = rates
 
     def run_generator(self):
 
         self.r = self.rates*self.dt
-        self.x = np.random.uniform(0,1,size=(self.n_in,self.batches,self.nsteps))
+        self.x = np.random.uniform(0,1,size=(self.N,self.trials,self.nsteps))
         spikes = np.array(self.x < self.r, dtype=np.int32)
 
         if self.random_select != None:
             rng = default_rng()
-            x = rng.choice(self.n_in, size=self.random_select, replace=False)
+            x = rng.choice(self.N, size=self.random_select, replace=False)
             spikes[x,:,:] = 0
 
         return spikes
