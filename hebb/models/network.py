@@ -101,7 +101,7 @@ class FractalNetwork:
             rstate = np.random.RandomState(random.Random(seed).randint(0, 2**32-1))
         return rstate
 
-    def run_generator(self):
+    def run_generator(self, scale=False):
 
         rng = self.get_rng(self.seed)
         t = np.ones((2, 2)) * 2
@@ -127,7 +127,12 @@ class FractalNetwork:
         self.J0 = (prob > rng.random_sample((n, n)))
         k = np.sum(self.J0)
 
-        return np.array(self.J0, dtype=int)
+        self.J0 = np.array(self.J0, dtype=int)
+
+        if scale:
+            self.J0 = self.J0/n
+
+        return self.J0
 
     def level_mat(self):
         level_mat = np.zeros((2**self.mx_lvl,2**self.mx_lvl), dtype=np.int8)

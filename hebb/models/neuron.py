@@ -166,10 +166,21 @@ class ClampedLIF(Neuron):
 
         fig, ax = plt.subplots(2,1, sharex=True)
         ax[0].imshow(self.V[:,trial,:], cmap='gray')
-        ax[1].imshow(self.Z[:,trial,:], cmap='gray')
         ax[0].set_ylabel('N')
+        ax[1].imshow(np.mod(self.Z[:,trial,:]+1,2), cmap='gray')
         ax[1].set_ylabel('N')
         plt.legend()
+
+    def plot_rate_hist(self):
+
+        rates = np.mean(self.Z,axis=1)
+        fig, ax = plt.subplots()
+        bins = np.linspace(rates.min(), rates.max(), 20)
+        colors = cm.coolwarm(np.linspace(0,1,self.nsteps))
+        for t in range(self.nsteps):
+            idx = np.nonzero(self.clamp[:,0,t])
+            vals, bins = np.histogram(rates[idx,t], bins=bins)
+            ax.plot(bins[:-1], vals, color=colors[t])
 
     def save_voltage_stats(self, dV=0.1):
 

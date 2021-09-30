@@ -12,14 +12,14 @@ from hebb.util import *
 ##################################################
 
 #Connectivity Matrix
-mx_lvl = 6
-E = 3
-sz_cl = 5
+mx_lvl = 10
+E = 5
+sz_cl = 9
 f = FractalNetwork(mx_lvl, E, sz_cl)
-J = 0.03*f.run_generator()
+J = f.run_generator(scale=True)
 
 #Trials & Timing
-trials = 10 #number of trials
+trials = 100 #number of trials
 dt = 0.001 #1ms
 T =  1.0 #100ms
 tau_ref = 0.003 #3ms
@@ -29,7 +29,7 @@ lif = ClampedLIF(T, dt, tau_ref, J, trials=trials, thr=1.0)
 shape = lif.shape
 
 #Poisson spikes for clamp
-r0 = 20 #Hz
+r0 = 50 #Hz
 N,trials,steps = shape
 clamp = np.zeros((N,trials,steps))
 clamp[2**sz_cl-1:,:,:] = 1
@@ -39,5 +39,7 @@ spikes = poisson.run_generator()
 
 #Run the sim
 lif.call(spikes, clamp)
-lif.save_voltage_stats(dV=0.1)
+lif.plot_unit()
+lif.plot_activity()
+lif.plot_rate_hist()
 plt.show()
