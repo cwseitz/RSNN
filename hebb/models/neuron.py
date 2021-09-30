@@ -1,8 +1,11 @@
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
+import pims
 from .network import *
+from ..util import *
 from matplotlib import cm
+from skimage.io import imsave
 
 ################################################################################
 ##
@@ -75,7 +78,6 @@ class Neuron:
         self.dtype = dtype #data type
         self.shape = (self.N,self.trials,self.nsteps)
 
-
 class ClampedLIF(Neuron):
 
     def __init__(self,  T, dt, tau_ref, J, trials=1, tau=1.0, g_l=1.0, thr=0.615, dtype=np.float32):
@@ -132,14 +134,16 @@ class ClampedLIF(Neuron):
     def call(self, spikes, clamp):
 
         """
-        clamp : 3D ndarray, optional
+        spikes : 3D ndarray
             Used to clamp the observable state Z of specified neurons, often
             to use a subnetwork as an 'input population'.
+        clamp : 3D ndarray
+            A binary tensor where a value of '1' indicates that neuron of
+            a particular batch is clamped at that time
         """
 
         self.spikes = spikes
-        #invert clamp (see usage below)
-        self.clamp = np.mod(clamp + 1,2)
+        self.clamp = np.mod(clamp + 1,2) #invert clamp (see usage below)
         self.zero_state()
 
         start, end = 1, self.nsteps
@@ -158,129 +162,103 @@ class ClampedLIF(Neuron):
             #Enforce refractory period
             self.V[:,:,i] = self.V[:,:,i] - self.V[:,:,i]*self.R[:,:,i+self.ref_steps]
 
+    def plot_activity(self, trial=0):
 
-
-    def plot_weights(self):
-
-        fig, ax = plt.subplots(1,2)
-        ax[0].imshow(self.J, cmap='gray')
-        ax[1].imshow(self.W, cmap='gray')
-        plt.tight_layout()
-
-    def plot_activity(self, batch=0):
-
-        fig, ax = plt.subplots(3,1, sharex=True)
-
-        ax[0].imshow(self.V[:,batch,:], cmap='gray')
-        ax[1].imshow(np.mean(self.Z, axis=1), cmap='gray')
-        ax[2].imshow(self.spikes[:,batch,:], cmap='gray')
+        fig, ax = plt.subplots(2,1, sharex=True)
+        ax[0].imshow(self.V[:,trial,:], cmap='gray')
+        ax[1].imshow(self.Z[:,trial,:], cmap='gray')
         ax[0].set_ylabel('N')
         ax[1].set_ylabel('N')
-        ax[2].set_ylabel('X')
         plt.legend()
 
-    def plot_input_stats(self, bins=10):
+    def save_voltage_stats(self, dV=0.1):
 
         """
-        Input current distribution over trials
+        Compute the histogram of voltage values for a single neuron over
+        trials, as a function of time i.e. P(V,t)
+
+        The vector over which P is calculated has shape (1, trials, 1)
+
         """
 
-        fig, ax = plt.subplots()
-        ax.scatter(self.I[10,:,:].flatten(), self.I[11,:,:].flatten())
-        plt.show()
+        bins = np.arange(0, self.thr, dV)
+        temp = np.zeros((self.nsteps,480,640,3))
+        imsave('data/temp.tif', temp)
+        im = pims.open('data/temp.tif')
 
-    def plot_voltage_stats(self, bins=10):
-
-        fig, ax = plt.subplots()
-        colormap = cm.get_cmap('coolwarm')
-        colors = colormap(np.linspace(0, 1, self.nsteps))
-
-        #compute the histogram of values over (unit, batch) matrix
-        hist_arr, edges_arr = [], []
+        h = np.apply_along_axis(lambda a: np.histogram(a, bins=bins, density=True)[0], 1, self.V)
         for t in range(self.nsteps):
-            hist, edges = np.histogram(self.V[:,:,t], bins=bins, density=True)
-            ax.plot(edges[:-1], hist, color=colors[t], alpha=0.5)
+            fig, ax = plt.subplots()
+            ax.imshow(h[:,:,t], cmap='coolwarm')
+            rgb_array_3d = plt2array(fig)
+            im[t] = rgb_array_3d
 
-        ax.set_xlabel('Voltage (a.u.)')
-        ax.set_ylabel('PDF')
-        plt.tight_layout()
+    def plot_unit(self, unit=0, trial=0):
 
-    def plot_unit(self, unit=0, batch=0):
-
-        #Plot input and state variables for a single unit in a single batch
+        #Plot input and state variables for a single unit in a single trial
         fig, ax = plt.subplots(4,1, sharex=True)
 
-        ax[1].plot(self.V[unit,batch,self.ref_steps:], 'k')
-        #ax[0].hlines(self.thr, self.t.min(), self.t.max(), color='red')
-        #ax[0].hlines(0, self.t.min(), self.t.max(), color='blue')
-        ax[1].set_ylabel('V (mV)')
-        # ax[0].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
-        # ax[0].grid(which='both')
-
-        ax[0].plot(self.I[unit,batch,self.ref_steps:], 'k')
-        # ax[1].set_xlabel('t (ms)')
-        # ax[1].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
+        ax[0].plot(self.I[unit,trial,:], 'k')
+        xmin, xmax = ax[0].get_xlim()
         ax[0].grid(which='both')
         ax[0].set_ylabel('$I$(t) ($\\mu{A}/cm^2$)')
 
-        ax[3].plot(self.R[unit,batch,self.ref_steps:], 'k')
-        # ax[2].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
-        # ax[2].grid(which='both')
-        ax[3].set_xlabel('t (ms)')
-        ax[3].set_ylabel('$R(t)$')
+        ax[1].plot(self.V[unit,trial,:], 'k')
+        ax[1].hlines(self.thr, xmin, xmax, color='red')
+        ax[1].hlines(0, xmin, xmax, color='blue')
+        ax[1].grid(which='both')
+        ax[1].set_ylabel('V (mV)')
 
-        ax[2].plot(self.Z[unit,batch,self.ref_steps:], 'k')
-        # ax[3].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
-        # ax[3].grid(which='both')
-        ax[2].set_xlabel('t (ms)')
+        ax[2].plot(self.Z[unit,trial,:], 'k')
+        ax[2].grid(which='both')
         ax[2].set_ylabel('$Z(t)$')
 
+        ax[3].plot(self.R[unit,trial,self.ref_steps:], 'k')
+        ax[3].grid(which='both')
+        ax[3].set_xlabel('t (ms)')
+        ax[3].set_ylabel('$R(t)$')
         plt.tight_layout()
 
 class LIF(Neuron):
 
-    def __init__(self, T, dt, tau_ref, N=1, trials=1, X=None, input=None, tau=1.0, g_l=1.0, thr=0.615, dtype=np.float32):
+    def __init__(self,  T, dt, tau_ref, J, trials=1, tau=1.0, g_l=1.0, thr=0.615, dtype=np.float32):
 
-        super(LIF, self).__init__(T, dt, tau_ref, N=N, trials=trials, X=X, input=input, dtype=dtype)
+        super(LIF, self).__init__(T, dt, tau_ref, J=J, trials=trials, dtype=dtype)
 
         """
-
-        Leaky Integrate & Fire (LIF) neuron model
+        Basic Leaky Integrate & Fire (LIF) neuron model. For use when the
+        input currents to each neuron (from an external input pop) are known.
+        To generate currents from spikes and an input connectivity matrix,
+        see utility functions.
 
         Parameters
         ----------
 
-        t: 1D ndarray
-            A 1-dimensional numpy array containing time steps
-        N: int
-            Number of neurons to simulate
+        T: float
+            Total simulation time in seconds
+        dt: float
+            Time resolution in seconds
+        tau_ref : float
+            Refractory time in seconds
+        J : 2D ndarray
+            Synaptic connectivity matrix
         trials : int
             Number of stimulations to run
         tau : float
-            Membrane time constant (tau = RC)
+            Membrane time constant
         g_l : float
             The leak conductance of the membrane
         thr : float
             Firing threshold
-        tau_ref : int
-            An integer n s.t. refactory time is equal to n*dt
-        X : ndarray, optional
-            Input spike train
-        input: ndarray, optional
-            Input current per unit area. For examination of one or more neurons
-            response to known input current(s) (defaults to None).
         dtype : numpy data type
             Data type to use for neuron state variables
 
         """
 
         #LIF specific parameters
-
-        self.g_l = g_l
         self.tau = tau
+        self.g_l = g_l
         self.thr = thr
-        self.J = None
-        self.W = None
 
     def spike_function(self, v):
         z = (v >= self.thr).astype('int')
@@ -292,127 +270,92 @@ class LIF(Neuron):
         self.I = np.zeros(shape=(self.N, self.trials, self.nsteps), dtype=self.dtype)
         self.V = np.zeros(shape=(self.N, self.trials, self.nsteps), dtype=self.dtype)
         self.Z = np.zeros(shape=(self.N, self.trials, self.nsteps), dtype=np.int8)
-        self.R = np.zeros(shape=(self.N, self.trials, self.nsteps), dtype=np.int8)
+        self.R = np.zeros(shape=(self.N,self.trials,self.nsteps+self.ref_steps), dtype=np.int8)
 
-        if self.input is None:
-            pass
+    def check_shape(self, x):
+        if x is None:
+            raise ValueError('Input object was not set')
         else:
-            self.I[:,:,self.ref_steps:] = self.input
+            if x.shape != self.shape:
+                raise ValueError('Check input object shape')
+        return True
 
-    def call(self):
+    def call(self, currents=None):
 
-        if input is None:
-            if self.J is None or self.W is None:
-                raise ValueError('Recurrent and input connectivity were not set')
-
+        self.currents = currents
+        self.check_shape(self.currents)
         self.zero_state()
 
         start, end = self.ref_steps, self.nsteps
         for i in range(start, end):
-            #set input current if spikes were provided
-            if self.input is None:
-                i_in = np.matmul(self.W, self.X[:,:,i-1-self.tau_ref])
-                i_re = np.matmul(self.J, self.Z[:,:,i-1])
-                self.I[:,:,i] =  i_in + i_re
-
+            i_in = self.currents[:,:,i-1]
+            i_re = np.matmul(self.J, self.Z[:,:,i-1])
+            self.I[:,:,i] =  i_in + i_re
             #apply spike function to previous time step
             self.Z[:,:,i] = self.spike_function(self.V[:,:,i-1])
-
             #check if the neuron spiked in the last tau_ref time steps
-            self.R[:,:,i] = np.sum(self.Z[:,:,i-self.ref_steps:i+1], axis=-1)
-
+            self.R[:,:,i+self.ref_steps] = np.sum(self.Z[:,:,i-self.ref_steps:i+1], axis=-1)
             self.V[:,:,i] = self.V[:,:,i-1] - self.dt*self.V[:,:,i-1]/self.tau +\
                             self.I[:,:,i-1]/(self.tau*self.g_l)
-
             #Enforce refractory period
-            self.V[:,:,i] = self.V[:,:,i] - self.V[:,:,i]*self.R[:,:,i]
+            self.V[:,:,i] = self.V[:,:,i] - self.V[:,:,i]*self.R[:,:,i+self.ref_steps]
 
+    def plot_activity(self, trial=0):
 
-
-    def plot_weights(self):
-
-        fig, ax = plt.subplots(1,2)
-        ax[0].imshow(self.J, cmap='gray')
-        ax[1].imshow(self.W, cmap='gray')
-        plt.tight_layout()
-
-    def plot_activity(self, batch=0):
-
-        fig, ax = plt.subplots(4,1, sharex=True)
-
-        nu_n = np.sum(self.Z[:,batch,self.tau_ref:], axis=0)/self.N
-        nu_x = np.sum(self.X[:,batch,:], axis=0)/self.X.shape[0]
-
-        ax[0].imshow(self.V[:,batch,self.tau_ref:], cmap='gray')
-        ax[1].imshow(self.Z[:,batch,self.tau_ref:], cmap='gray')
-        ax[2].imshow(self.X[:,batch,:], cmap='gray')
+        fig, ax = plt.subplots(2,1, sharex=True)
+        ax[0].imshow(self.V[:,trial,:], cmap='gray')
+        ax[1].imshow(self.Z[:,trial,:], cmap='gray')
         ax[0].set_ylabel('N')
         ax[1].set_ylabel('N')
-        ax[2].set_ylabel('X')
-        ax[3].set_xlabel('Time (ms)')
-        ax[3].plot(nu_n, color='red', label='Primary')
-        ax[3].plot(nu_x, color='blue', label='Input')
-        ax[3].set_ylabel('A(t)')
         plt.legend()
 
-    def plot_input_stats(self, bins=10):
+    def save_voltage_stats(self, dV=0.1):
 
         """
-        Input current distribution over trials
+        Compute the histogram of voltage values for a single neuron over
+        trials, as a function of time i.e. P(V,t)
+
+        The vector over which P is calculated has shape (1, trials, 1)
+
         """
 
-        fig, ax = plt.subplots()
-        ax.scatter(self.I[10,:,:].flatten(), self.I[11,:,:].flatten())
-        plt.show()
+        bins = np.arange(0, self.thr, dV)
+        temp = np.zeros((self.nsteps,480,640,3))
+        imsave('data/temp.tif', temp)
+        im = pims.open('data/temp.tif')
 
-    def plot_voltage_stats(self, bins=10):
-
-        fig, ax = plt.subplots()
-        colormap = cm.get_cmap('coolwarm')
-        colors = colormap(np.linspace(0, 1, self.nsteps))
-
-        #compute the histogram of values over (unit, batch) matrix
-        hist_arr, edges_arr = [], []
+        h = np.apply_along_axis(lambda a: np.histogram(a, bins=bins, density=True)[0], 1, self.V)
         for t in range(self.nsteps):
-            hist, edges = np.histogram(self.V[:,:,t], bins=bins, density=True)
-            ax.plot(edges[:-1], hist, color=colors[t], alpha=0.5)
+            fig, ax = plt.subplots()
+            ax.imshow(h[:,:,t], cmap='coolwarm')
+            rgb_array_3d = plt2array(fig)
+            im[t] = rgb_array_3d
 
-        ax.set_xlabel('Voltage (a.u.)')
-        ax.set_ylabel('PDF')
-        plt.tight_layout()
+    def plot_unit(self, unit=0, trial=0):
 
-    def plot_unit(self, unit=0, batch=0):
-
-        #Plot input and state variables for a single unit in a single batch
+        #Plot input and state variables for a single unit in a single trial
         fig, ax = plt.subplots(4,1, sharex=True)
 
-        ax[1].plot(self.V[unit,batch,self.ref_steps:], 'k')
-        #ax[0].hlines(self.thr, self.t.min(), self.t.max(), color='red')
-        #ax[0].hlines(0, self.t.min(), self.t.max(), color='blue')
-        ax[1].set_ylabel('V (mV)')
-        # ax[0].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
-        # ax[0].grid(which='both')
-
-        ax[0].plot(self.I[unit,batch,self.ref_steps:], 'k')
-        # ax[1].set_xlabel('t (ms)')
-        # ax[1].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
+        ax[0].plot(self.I[unit,trial,:], 'k')
+        xmin, xmax = ax[0].get_xlim()
         ax[0].grid(which='both')
         ax[0].set_ylabel('$I$(t) ($\\mu{A}/cm^2$)')
 
-        ax[3].plot(self.R[unit,batch,self.ref_steps:], 'k')
-        # ax[2].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
-        # ax[2].grid(which='both')
-        ax[3].set_xlabel('t (ms)')
-        ax[3].set_ylabel('$R(t)$')
+        ax[1].plot(self.V[unit,trial,:], 'k')
+        ax[1].hlines(self.thr, xmin, xmax, color='red')
+        ax[1].hlines(0, xmin, xmax, color='blue')
+        ax[1].grid(which='both')
+        ax[1].set_ylabel('V (mV)')
 
-        ax[2].plot(self.Z[unit,batch,self.ref_steps:], 'k')
-        # ax[3].set_xticks(np.arange(self.t.min(), self.t.max()+1, self.dt))
-        # ax[3].grid(which='both')
-        ax[2].set_xlabel('t (ms)')
+        ax[2].plot(self.Z[unit,trial,:], 'k')
+        ax[2].grid(which='both')
         ax[2].set_ylabel('$Z(t)$')
 
+        ax[3].plot(self.R[unit,trial,self.ref_steps:], 'k')
+        ax[3].grid(which='both')
+        ax[3].set_xlabel('t (ms)')
+        ax[3].set_ylabel('$R(t)$')
         plt.tight_layout()
-
 
 # class HodgkinHuxley(Neuron):
 #

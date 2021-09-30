@@ -19,13 +19,13 @@ f = FractalNetwork(mx_lvl, E, sz_cl)
 J = 0.03*f.run_generator()
 
 #Trials & Timing
-trials = 200 #number of trials
+trials = 10 #number of trials
 dt = 0.001 #1ms
 T =  1.0 #100ms
 tau_ref = 0.003 #3ms
 
 #LIF Network
-lif = ClampedLIF(T, dt, tau_ref, J, trials=trials)
+lif = ClampedLIF(T, dt, tau_ref, J, trials=trials, thr=1.0)
 shape = lif.shape
 
 #Poisson spikes for clamp
@@ -39,5 +39,5 @@ spikes = poisson.run_generator()
 
 #Run the sim
 lif.call(spikes, clamp)
-lif.plot_activity()
+lif.save_voltage_stats(dV=0.1)
 plt.show()
