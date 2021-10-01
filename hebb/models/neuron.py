@@ -182,17 +182,31 @@ class ClampedLIF(Neuron):
             vals, bins = np.histogram(rates[idx,t], bins=bins)
             ax.plot(bins[:-1], vals, color=colors[t])
 
-    def save_voltage_stats(self, dV=0.1):
+    def pop_v_stats(self, dv=0.05):
+
+        """
+        Compute the histogram of voltage values over a population
+        as a function of time i.e. P(V,t)
+        """
+
+        bins = np.arange(0, self.thr, dv)
+        fig, ax = plt.subplots()
+        colors = cm.coolwarm(np.linspace(0,1,self.nsteps))
+        for t in range(self.nsteps):
+            idx = np.nonzero(self.clamp[:,0,t])
+            vals, bins = np.histogram(self.V[idx,:,t], bins=bins)
+            vals = vals/(np.sum(vals)*dv)
+            ax.plot(bins[:-1], vals, color=colors[t])
+
+    def unit_v_stats(self, dv=0.01):
 
         """
         Compute the histogram of voltage values for a single neuron over
         trials, as a function of time i.e. P(V,t)
-
         The vector over which P is calculated has shape (1, trials, 1)
-
         """
 
-        bins = np.arange(0, self.thr, dV)
+        bins = np.arange(0, self.thr, dv)
         temp = np.zeros((self.nsteps,480,640,3))
         imsave('data/temp.tif', temp)
         im = pims.open('data/temp.tif')

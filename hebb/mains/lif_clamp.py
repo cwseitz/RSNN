@@ -12,16 +12,16 @@ from hebb.util import *
 ##################################################
 
 #Connectivity Matrix
-mx_lvl = 10
+mx_lvl = 9
 E = 5
-sz_cl = 9
+sz_cl = 8
 f = FractalNetwork(mx_lvl, E, sz_cl)
 J = f.run_generator(scale=True)
 
 #Trials & Timing
 trials = 100 #number of trials
 dt = 0.001 #1ms
-T =  1.0 #100ms
+T =  2.0 #100ms
 tau_ref = 0.003 #3ms
 
 #LIF Network
@@ -39,7 +39,7 @@ spikes = poisson.run_generator()
 
 #Run the sim
 lif.call(spikes, clamp)
-lif.plot_unit()
+lif.pop_v_stats()
 lif.plot_activity()
 lif.plot_rate_hist()
 plt.show()
