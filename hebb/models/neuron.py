@@ -80,7 +80,7 @@ class Neuron:
 
 class ClampedLIF(Neuron):
 
-    def __init__(self,  T, dt, tau_ref, J, trials=1, tau=1.0, g_l=1.0, thr=0.615, dtype=np.float32):
+    def __init__(self,  T, dt, tau_ref, J, trials=1, tau=0.02, g_l=75, thr=20, dtype=np.float32):
 
         super(ClampedLIF, self).__init__(T, dt, tau_ref, J=J, trials=trials, dtype=dtype)
 
@@ -108,7 +108,7 @@ class ClampedLIF(Neuron):
         g_l : float
             The leak conductance of the membrane
         thr : float
-            Firing threshold
+            Firing threshold in mV
         dtype : numpy data type
             Data type to use for neuron state variables
 
@@ -162,91 +162,9 @@ class ClampedLIF(Neuron):
             #Enforce refractory period
             self.V[:,:,i] = self.V[:,:,i] - self.V[:,:,i]*self.R[:,:,i+self.ref_steps]
 
-    def plot_activity(self, trial=0):
-
-        fig, ax = plt.subplots(2,1, sharex=True)
-        ax[0].imshow(self.V[:,trial,:], cmap='gray')
-        ax[0].set_ylabel('N')
-        ax[1].imshow(np.mod(self.Z[:,trial,:]+1,2), cmap='gray')
-        ax[1].set_ylabel('N')
-        plt.legend()
-
-    def plot_rate_hist(self):
-
-        rates = np.mean(self.Z,axis=1)
-        fig, ax = plt.subplots()
-        bins = np.linspace(rates.min(), rates.max(), 20)
-        colors = cm.coolwarm(np.linspace(0,1,self.nsteps))
-        for t in range(self.nsteps):
-            idx = np.nonzero(self.clamp[:,0,t])
-            vals, bins = np.histogram(rates[idx,t], bins=bins)
-            ax.plot(bins[:-1], vals, color=colors[t])
-
-    def pop_v_stats(self, dv=0.05):
-
-        """
-        Compute the histogram of voltage values over a population
-        as a function of time i.e. P(V,t)
-        """
-
-        bins = np.arange(0, self.thr, dv)
-        fig, ax = plt.subplots()
-        colors = cm.coolwarm(np.linspace(0,1,self.nsteps))
-        for t in range(self.nsteps):
-            idx = np.nonzero(self.clamp[:,0,t])
-            vals, bins = np.histogram(self.V[idx,:,t], bins=bins)
-            vals = vals/(np.sum(vals)*dv)
-            ax.plot(bins[:-1], vals, color=colors[t])
-
-    def unit_v_stats(self, dv=0.01):
-
-        """
-        Compute the histogram of voltage values for a single neuron over
-        trials, as a function of time i.e. P(V,t)
-        The vector over which P is calculated has shape (1, trials, 1)
-        """
-
-        bins = np.arange(0, self.thr, dv)
-        temp = np.zeros((self.nsteps,480,640,3))
-        imsave('data/temp.tif', temp)
-        im = pims.open('data/temp.tif')
-
-        h = np.apply_along_axis(lambda a: np.histogram(a, bins=bins, density=True)[0], 1, self.V)
-        for t in range(self.nsteps):
-            fig, ax = plt.subplots()
-            ax.imshow(h[:,:,t], cmap='coolwarm')
-            rgb_array_3d = plt2array(fig)
-            im[t] = rgb_array_3d
-
-    def plot_unit(self, unit=0, trial=0):
-
-        #Plot input and state variables for a single unit in a single trial
-        fig, ax = plt.subplots(4,1, sharex=True)
-
-        ax[0].plot(self.I[unit,trial,:], 'k')
-        xmin, xmax = ax[0].get_xlim()
-        ax[0].grid(which='both')
-        ax[0].set_ylabel('$I$(t) ($\\mu{A}/cm^2$)')
-
-        ax[1].plot(self.V[unit,trial,:], 'k')
-        ax[1].hlines(self.thr, xmin, xmax, color='red')
-        ax[1].hlines(0, xmin, xmax, color='blue')
-        ax[1].grid(which='both')
-        ax[1].set_ylabel('V (mV)')
-
-        ax[2].plot(self.Z[unit,trial,:], 'k')
-        ax[2].grid(which='both')
-        ax[2].set_ylabel('$Z(t)$')
-
-        ax[3].plot(self.R[unit,trial,self.ref_steps:], 'k')
-        ax[3].grid(which='both')
-        ax[3].set_xlabel('t (ms)')
-        ax[3].set_ylabel('$R(t)$')
-        plt.tight_layout()
-
 class LIF(Neuron):
 
-    def __init__(self,  T, dt, tau_ref, J, trials=1, tau=1.0, g_l=1.0, thr=0.615, dtype=np.float32):
+    def __init__(self,  T, dt, tau_ref, J, trials=1, tau=0.02, g_l=50, thr=20, dtype=np.float32):
 
         super(LIF, self).__init__(T, dt, tau_ref, J=J, trials=trials, dtype=dtype)
 
@@ -325,62 +243,6 @@ class LIF(Neuron):
             #Enforce refractory period
             self.V[:,:,i] = self.V[:,:,i] - self.V[:,:,i]*self.R[:,:,i+self.ref_steps]
 
-    def plot_activity(self, trial=0):
-
-        fig, ax = plt.subplots(2,1, sharex=True)
-        ax[0].imshow(self.V[:,trial,:], cmap='gray')
-        ax[1].imshow(self.Z[:,trial,:], cmap='gray')
-        ax[0].set_ylabel('N')
-        ax[1].set_ylabel('N')
-        plt.legend()
-
-    def save_voltage_stats(self, dV=0.1):
-
-        """
-        Compute the histogram of voltage values for a single neuron over
-        trials, as a function of time i.e. P(V,t)
-
-        The vector over which P is calculated has shape (1, trials, 1)
-
-        """
-
-        bins = np.arange(0, self.thr, dV)
-        temp = np.zeros((self.nsteps,480,640,3))
-        imsave('data/temp.tif', temp)
-        im = pims.open('data/temp.tif')
-
-        h = np.apply_along_axis(lambda a: np.histogram(a, bins=bins, density=True)[0], 1, self.V)
-        for t in range(self.nsteps):
-            fig, ax = plt.subplots()
-            ax.imshow(h[:,:,t], cmap='coolwarm')
-            rgb_array_3d = plt2array(fig)
-            im[t] = rgb_array_3d
-
-    def plot_unit(self, unit=0, trial=0):
-
-        #Plot input and state variables for a single unit in a single trial
-        fig, ax = plt.subplots(4,1, sharex=True)
-
-        ax[0].plot(self.I[unit,trial,:], 'k')
-        xmin, xmax = ax[0].get_xlim()
-        ax[0].grid(which='both')
-        ax[0].set_ylabel('$I$(t) ($\\mu{A}/cm^2$)')
-
-        ax[1].plot(self.V[unit,trial,:], 'k')
-        ax[1].hlines(self.thr, xmin, xmax, color='red')
-        ax[1].hlines(0, xmin, xmax, color='blue')
-        ax[1].grid(which='both')
-        ax[1].set_ylabel('V (mV)')
-
-        ax[2].plot(self.Z[unit,trial,:], 'k')
-        ax[2].grid(which='both')
-        ax[2].set_ylabel('$Z(t)$')
-
-        ax[3].plot(self.R[unit,trial,self.ref_steps:], 'k')
-        ax[3].grid(which='both')
-        ax[3].set_xlabel('t (ms)')
-        ax[3].set_ylabel('$R(t)$')
-        plt.tight_layout()
 
 # class HodgkinHuxley(Neuron):
 #

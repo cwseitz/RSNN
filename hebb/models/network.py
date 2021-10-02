@@ -110,29 +110,29 @@ class FractalNetwork:
 
         for lvl in range(1, self.mx_lvl):
             s = 2**(lvl+1)
-            self.J0 = np.ones((s, s))
+            self.J = np.ones((s, s))
             grp1 = range(int(s/2))
             grp2 = range(int(s/2), s)
             ix1 = np.add.outer(np.array(grp1) * s, grp1).flatten()
             ix2 = np.add.outer(np.array(grp2) * s, grp2).flatten()
-            self.J0.flat[ix1] = t
-            self.J0.flat[ix2] = t
-            self.J0 += 1
-            t = self.J0.copy()
+            self.J.flat[ix1] = t
+            self.J.flat[ix2] = t
+            self.J += 1
+            t = self.J.copy()
 
-        self.J0 -= (np.ones((s, s)) + self.mx_lvl * np.eye(s))
-        ee = self.mx_lvl - self.J0 - self.sz_cl
+        self.J -= (np.ones((s, s)) + self.mx_lvl * np.eye(s))
+        ee = self.mx_lvl - self.J - self.sz_cl
         ee = (ee > 0) * ee
         prob = (1 / self.E**ee) * (np.ones((s, s)) - np.eye(s))
-        self.J0 = (prob > rng.random_sample((n, n)))
-        k = np.sum(self.J0)
+        self.J = (prob > rng.random_sample((n, n)))
+        k = np.sum(self.J)
 
-        self.J0 = np.array(self.J0, dtype=int)
+        self.J = np.array(self.J, dtype=int)
 
         if scale:
-            self.J0 = self.J0/n
+            self.J = self.J/n
 
-        return self.J0
+        return self.J
 
     def level_mat(self):
         level_mat = np.zeros((2**self.mx_lvl,2**self.mx_lvl), dtype=np.int8)
@@ -157,13 +157,15 @@ class FractalNetwork:
             Whether or not to show node labels, Defaults to False
         """
 
-        G = nx.convert_matrix.from_numpy_array(self.J0)
-        idxs = np.argwhere(self.J0 > 0)
+        fix, ax = plt.subplots(1,2)
+        ax[0].imshow(self.J, cmap='gray')
+        G = nx.convert_matrix.from_numpy_array(self.J)
+        idxs = np.argwhere(self.J > 0)
         self.level_mat = self.level_mat()
 
         if self.color_by == 'level':
             if colors is None:
-                colors = cm.viridis(np.linspace(0,1,self.mx_lvl-self.sz_cl))
+                colors = cm.coolwarm(np.linspace(0,1,self.mx_lvl-self.sz_cl))
             for idx in idxs:
                 x,y = idx
                 color_idx = int(self.level_mat[x,y])
@@ -171,8 +173,7 @@ class FractalNetwork:
 
         colors = [G[u][v]['color'] for u,v in G.edges()]
         pos = nx.spring_layout(G)
-        fig, ax = plt.subplots()
-        nx.draw(G, pos, ax=ax, alpha=0.1, node_size=5, node_color='black',
+        nx.draw(G, pos, ax=ax[1], alpha=0.1, node_size=5, node_color='black',
                 edge_color=colors, with_labels=labels)
         plt.tight_layout()
 
