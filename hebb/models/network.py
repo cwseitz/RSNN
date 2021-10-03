@@ -1,52 +1,9 @@
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from matplotlib import cm
-
-class InputConnectivityGenerator:
-
-    """
-    Generate the connectivity matrix for external stimulation
-    Defaults to a diagonal matrix
-
-    Parameters
-    ----------
-    n_rec : int,
-    """
-
-    def __init__(self, n_rec, mu, sigma):
-
-        self.n_rec = n_rec
-        self.mu = mu
-        self.sigma = sigma
-        self.X = self.generate_conn_mat()
-
-    def generate_conn_mat(self):
-
-        for n in range(0, self.n_neurons):
-            for a in range(0, self.k):
-                rand = numpy.random.randint(0, self.n_neurons)
-                while rand == n or self.conn_mat[n][rand] == 1:
-                    rand = numpy.random.randint(0, self.n_neurons)
-                self.conn_mat[n][rand] = 1
-
-
-    def make_weighted(self):
-
-        # Generate random weights and fill matrix
-        for i in range(0, self.n_neurons):
-            for j in range(0, self.n_neurons):
-                if self.X[i][j] == 1:
-                    self.weight_mat[i][j] = (
-                        numpy.random.lognormal(self.mu, self.sigma)
-                    )
-
-    def plot(self):
-        fig, ax = plt.subplots()
-        if self.X is None:
-            raise ValueError('Generator function has not been called')
-        ax.imshow(self.X, cmap='gray')
-        plt.show()
+from numpy.random import default_rng
 
 class FractalNetwork:
 
@@ -158,7 +115,11 @@ class FractalNetwork:
         """
 
         fix, ax = plt.subplots(1,2)
+        colormap = cm.get_cmap('gray')
+        map = mpl.cm.ScalarMappable(cmap=colormap)
         ax[0].imshow(self.J, cmap='gray')
+        plt.colorbar(ax=ax[0])
+
         G = nx.convert_matrix.from_numpy_array(self.J)
         idxs = np.argwhere(self.J > 0)
         self.level_mat = self.level_mat()
@@ -181,7 +142,7 @@ class BrunelNetwork:
 
     """
     This function generates a directed network of excitatory and inhibitory
-    (sometimes called a Brunel network)
+    (sometimes called a Brunel network) and an input connectivity matrix
 
     Parameters
     ----------
@@ -205,20 +166,19 @@ class BrunelNetwork:
         number of connections present in output J0
     """
 
-    def __init__(self, n_excite, n_inhib, p_ee, p_ei, p_ie, p_ii, mu, sigma):
+    def __init__(self, n_excite, n_inhib, n_in, p, p_ee, p_ei, p_ie, p_ii):
 
         # Determine numbers of neurons
         self.n_excite = n_excite
         self.n_inhib = n_inhib
+        self.n_in = n_in
         self.n_neurons = n_excite + n_inhib
-        self.mu = mu
-        self.sigma = sigma
 
         # Initialize connectivity matrix
         self.CIJ = np.zeros((self.n_neurons, self.n_neurons))
 
-        # Calculate total number of connections per neuron (remove
-        # neuron from target if included (ee and ii))
+        # Calculate total number of connections per neuron
+        self.k = int(round(p*self.n_neurons))
         self.k_ii = int(round(p_ii * (self.n_inhib - 1)))
         self.k_ei = int(round(p_ei * self.n_inhib))
         self.k_ie = int(round(p_ie * self.n_excite))
@@ -226,6 +186,7 @@ class BrunelNetwork:
 
     def run_generator(self):
         self.generate_CIJ()
+        self.generate_XIJ()
 
     def generate_CIJ(self):
 
@@ -251,7 +212,7 @@ class BrunelNetwork:
                 rand = np.random.randint(0, self.n_excite)
                 while self.CIJ[n + self.n_excite][rand] == 1:
                     rand = np.random.randint(0, self.n_excite)
-                self.CIJ[n + self.n_excite][rand] = 1
+                self.CIJ[n + self.n_excite][rand] = -1
 
         # I to I connections
         for n in range(0, self.n_inhib):
@@ -259,21 +220,15 @@ class BrunelNetwork:
                 rand = np.random.randint(self.n_excite, self.n_excite + self.n_inhib)
                 while rand == (n + self.n_excite) or self.CIJ[n + self.n_excite][rand] == 1:
                     rand = np.random.randint(self.n_excite, self.n_excite + self.n_inhib)
-                self.CIJ[n + self.n_excite][rand] = 1
+                self.CIJ[n + self.n_excite][rand] = -1
 
-    def make_weighted(self):
+    def generate_XIJ(self):
 
-
-        # Generate random weights and fill matrix
-        for i in range(0, self.n_neurons):
-            for j in range(0, self.n_neurons):
-                if self.CIJ[i][j] == 1:
-                    self.CIJ[i][j] = (np.random.lognormal(self.mu, self.sigma))
-                    # Make all I 10 times stronger AND NEGATIVE
-                    if self.n_neurons > i > (self.n_neurons - self.n_inhib):
-                        self.CIJ[i][j] *= -10
-
-
+        self.XIJ = np.zeros((self.n_neurons, self.n_in))
+        for n in range(0, self.n_in):
+            rng = default_rng()
+            idx = rng.choice(self.n_neurons, size=self.k, replace=False)
+            self.XIJ[idx,n] = 1
 
     def get_colormat(self):
         self.color_mat = np.zeros_like(self.CIJ)
@@ -289,7 +244,7 @@ class BrunelNetwork:
         """
 
         fig, ax = plt.subplots(1,2)
-        G = nx.convert_matrix.from_numpy_array(self.CIJ)
+        G = nx.convert_matrix.from_numpy_array(np.abs(self.CIJ))
         idxs = np.argwhere(self.CIJ != 0)
 
         self.get_colormat()
@@ -302,5 +257,10 @@ class BrunelNetwork:
         pos = nx.spring_layout(G)
         nx.draw(G, pos, ax=ax[0], alpha=0.1, node_size=5, node_color='black',
                 edge_color=colors, with_labels=labels)
-        ax[1].imshow(self.CIJ)
+        ax[1].imshow(self.CIJ, cmap='gray')
+        colormap = cm.get_cmap('gray')
+        map = mpl.cm.ScalarMappable(cmap=colormap)
+        ax[1].imshow(self.CIJ, cmap='gray')
+        plt.colorbar(map, ax=ax[1], fraction=0.046, pad=0.04)
+
         plt.tight_layout()

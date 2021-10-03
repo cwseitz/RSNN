@@ -223,7 +223,7 @@ class LIF(Neuron):
                 raise ValueError('Check input object shape')
         return True
 
-    def call(self, currents=None):
+    def call(self, currents):
 
         self.currents = currents
         self.check_shape(self.currents)

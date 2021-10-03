@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib as mpl
 from matplotlib import cm
 
 def plt2array(fig):
@@ -12,10 +13,24 @@ def plt2array(fig):
 def plot_activity(cell, trial=0):
 
     fig, ax = plt.subplots(2,1, sharex=True)
+
+    colormap = cm.get_cmap('gray')
+    norm = mpl.colors.Normalize(vmin=0, vmax=cell.V.max())
+    map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+
     ax[0].imshow(cell.V[:,trial,:], cmap='gray')
-    ax[0].set_ylabel('N')
+    ax[0].set_ylabel('Neuron #')
+    plt.colorbar(map, ax=ax[0], label='$\mathbf{V}\; [\mathrm{mV}]$')
+
+    colormap = cm.get_cmap('gray')
+    norm = mpl.colors.Normalize(vmin=0, vmax=1)
+    map = mpl.cm.ScalarMappable(cmap=colormap)
+
     ax[1].imshow(np.mod(cell.Z[:,trial,:]+1,2), cmap='gray')
-    ax[1].set_ylabel('N')
+    ax[1].set_ylabel('Neuron #')
+    ax[1].set_xlabel('Time (ms)')
+    plt.colorbar(map, ax=ax[1], label='$\mathbf{Z}$')
+
     plt.legend()
 
 def plot_rate_hist(cell, bins=20):

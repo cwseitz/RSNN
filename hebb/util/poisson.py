@@ -36,16 +36,21 @@ class Poisson:
             rates = self.r0*np.ones((self.N, self.trials, self.nsteps))
 
         self.rates = rates
+        self.run_generator()
 
     def run_generator(self):
 
         self.r = self.rates*self.dt
         self.x = np.random.uniform(0,1,size=(self.N,self.trials,self.nsteps))
-        spikes = np.array(self.x < self.r, dtype=np.int32)
+        self.spikes = np.array(self.x < self.r, dtype=np.int32)
 
         if self.random_select != None:
             rng = default_rng()
             x = rng.choice(self.N, size=self.random_select, replace=False)
-            spikes[x,:,:] = 0
+            self.spikes[x,:,:] = 0
 
-        return spikes
+        return self.spikes
+
+    def to_currents(self, J):
+        self.currents = np.einsum('ij,jhk->ihk', J, self.spikes)
+        return self.currents

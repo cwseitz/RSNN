@@ -15,33 +15,28 @@ from hebb.models import *
 ##################################################
 
 
-n_excite = 800
-n_inhib = 200
+n_excite = 80
+n_inhib = 20
+n_in = 10
+N = n_excite + n_inhib
+
+#Trials & Timing
+trials = 1 #number of trials
+dt = 0.001 #1ms
+T =  0.5 #100ms
+tau_ref = 0.002 #3ms
+
+#Params and input
 p_ee, p_ei, p_ie, p_ii = [0.5, 0.1, 0.1, 0.5]
+p = 0.1
 
-dt = 0.001
-t = np.arange(0, 1, dt)
-batches = 1
-mu = -0.64
-sigma = 0.51
-
-N = 1000
-# cmg = InputConnectivityGenerator(N)
-# W = cmg.run_generator()
-# spikes = Poisson(t, N, batches=batches).run_generator()
-# W.plot()
-
-f = BrunelNetwork(n_excite, n_inhib, p_ee, p_ei, p_ie, p_ii, mu, sigma)
+#Network
+f = BrunelNetwork(n_excite, n_inhib, n_in, p, p_ee, p_ei, p_ie, p_ii)
 f.run_generator()
-f.make_weighted()
 f.plot()
-plt.show()
+currents = Poisson(T,dt,n_in,trials=trials).to_currents(f.XIJ)
 
-# lif = LIF(t, N, batches=batches, X=spikes, g_l=1, tau=1)
-# lif.W = W
-# lif.J = f.CIJ
-# lif.call()
-# lif.plot_activity()
-# lif.plot_unit()
-# lif.plot_input_stats()
-# plt.show()
+lif = LIF(T, dt, tau_ref, f.CIJ, trials=trials)
+lif.call(currents)
+plot_activity(lif)
+plt.show()
