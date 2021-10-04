@@ -43,8 +43,8 @@ ax.plot(S._V, S.P_S[:,steps[1]], color='blue')
 ax.plot(S._V, S.P_S[:,steps[2]], color='cyan', label='Sim - 200ms')
 
 ax.set_xlim([-v_max, v_max])
-ax.set_xlabel('X')
-ax.set_ylabel('P(X)')
+ax.set_xlabel('V', fontsize=14)
+ax.set_ylabel('P(V)', fontsize=14)
 plt.tight_layout()
 plt.legend()
 plt.grid()
@@ -56,10 +56,10 @@ Trajectories
 fig, ax = plt.subplots()
 
 for i in range(batch_size):
-    ax.plot(t, S.V[:,i], color='gray', alpha=0.3)
+    ax.plot(t, S.V[:,i], color='salmon', alpha=0.3)
 
-ax.set_xlabel('Time')
-ax.set_ylabel('V')
+ax.set_xlabel('Time (s)', fontsize=14)
+ax.set_ylabel('V', fontsize=14)
 
 plt.tight_layout()
 plt.grid()

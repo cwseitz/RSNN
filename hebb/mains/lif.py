@@ -13,18 +13,28 @@ from hebb.models import *
 ## Email: cwseitz@uchicago.edu
 ##################################################
 
-batches = 1 #number of trials
-N = 1 #number of neurons
+n_excite = 80
+n_inhib = 20
+n_in = 10
+N = n_excite + n_inhib
 
+#Trials & Timing
+trials = 1 #number of trials
 dt = 0.001 #1ms
-T = 0.02 #10ms
-tau_ref = 0.003 #3ms
+T =  1.0 #100ms
+tau_ref = 0.02 #3ms
 
-#Generate input tensor (N, batches, time)
-input = np.zeros((N, batches, int(round(T/dt))+1))
-input[:,:,5:12] = 0.7
+#Params and input
+J_xx = [2, 2, -2, -2] #J_ee, J_ei, J_ie, J_ii
+p = 0.2
 
-lif = LIF(T, dt, tau_ref, N=N, input=input, batches=batches)
-lif.call()
-lif.plot_unit()
+#Network
+f = BrunelNetwork(n_excite, n_inhib, n_in, p, J_xx)
+f.run_generator()
+f.plot()
+currents = Poisson(T,dt,n_in,trials=trials).to_currents(f.XIJ)
+lif = LIF(T, dt, tau_ref, f.CIJ, trials=trials)
+lif.call(currents)
+plot_activity(lif)
+plot_unit(lif)
 plt.show()
