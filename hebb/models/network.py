@@ -223,7 +223,7 @@ class BrunelNetwork:
 
         colors = [G[u][v]['color'] for u,v in G.edges()]
         pos = nx.spring_layout(G)
-        nx.draw(G, pos, ax=ax[0], alpha=0.1, node_size=5, node_color='black',
+        nx.draw(G, pos, ax=ax[0], alpha=0.01, node_size=5, node_color='black',
                 edge_color=colors, with_labels=labels)
         ax[1].imshow(self.CIJ, cmap='gray')
         colormap = cm.get_cmap('gray')
