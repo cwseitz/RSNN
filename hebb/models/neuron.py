@@ -164,7 +164,7 @@ class ClampedLIF(Neuron):
 
 class LIF(Neuron):
 
-    def __init__(self,  T, dt, tau_ref, J, trials=1, tau=0.02, g_l=50, thr=20, dtype=np.float32):
+    def __init__(self,  T, dt, tau_ref, J, trials=1, tau=0.02, g_l=20, thr=20, dtype=np.float32):
 
         super(LIF, self).__init__(T, dt, tau_ref, J=J, trials=trials, dtype=dtype)
 

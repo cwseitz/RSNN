@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib import cm
 from numpy.random import default_rng
+from networkx.generators.random_graphs import erdos_renyi_graph
 
 class FractalNetwork:
 
@@ -142,47 +143,31 @@ class BrunelNetwork:
 
     """
     This function generates a directed network of excitatory and inhibitory
-    (sometimes called a Brunel network) and an input connectivity matrix
+    (sometimes called a Brunel network) and an input connectivity matrix.
+
+    The network topology is a fixed in-degree network where the in-degree
+    is specified by the user. The out-degree varies
 
     Parameters
     ----------
-    mx_lvl : int
-        number of hierarchical levels, N = 2^mx_lvl
-    E : int
-        connection density fall off per level
-    sz_cl : int
-        size of clusters (must be power of 2)
-    seed : hashable, optional
-        If None (default), use the np.random's global random state to generate random numbers.
-        Otherwise, use a new np.random.RandomState instance seeded with the given value.
-    color_by : str, optional
-        Whether to color by level or largest group
 
     Returns
     -------
-    J0 : NxN np.ndarray
-        connection matrix
-    K : int
-        number of connections present in output J0
+
     """
 
-    def __init__(self, n_excite, n_inhib, n_in, p, p_ee, p_ei, p_ie, p_ii):
+    def __init__(self, n_excite, n_inhib, n_in, p, J_xx):
 
         # Determine numbers of neurons
         self.n_excite = n_excite
         self.n_inhib = n_inhib
         self.n_in = n_in
         self.n_neurons = n_excite + n_inhib
+        self.p = p
+        self.J_ee, self.J_ei, self.J_ie, self.J_ii = J_xx
 
         # Initialize connectivity matrix
         self.CIJ = np.zeros((self.n_neurons, self.n_neurons))
-
-        # Calculate total number of connections per neuron
-        self.k = int(round(p*self.n_neurons))
-        self.k_ii = int(round(p_ii * (self.n_inhib - 1)))
-        self.k_ei = int(round(p_ei * self.n_inhib))
-        self.k_ie = int(round(p_ie * self.n_excite))
-        self.k_ee = int(round(p_ee * (self.n_excite - 1)))
 
     def run_generator(self):
         self.generate_CIJ()
@@ -190,40 +175,16 @@ class BrunelNetwork:
 
     def generate_CIJ(self):
 
-        # E to E connections
-        for n in range(0, self.n_excite):
-            for a in range(0, self.k_ee):
-                rand = np.random.randint(0, self.n_excite)
-                while rand == n or self.CIJ[n][rand] == 1:
-                    rand = np.random.randint(0, self.n_excite)
-                self.CIJ[n][rand] = 1
-
-        # E to I connections
-        for n in range(0, self.n_excite):
-            for a in range(0, self.k_ei):
-                rand = np.random.randint(self.n_excite, self.n_excite + self.n_inhib)
-                while self.CIJ[n][rand] == 1:
-                    rand = np.random.randint(self.n_excite, self.n_excite + self.n_inhib)
-                self.CIJ[n][rand] = 1
-
-        # I to E connections
-        for n in range(0, self.n_inhib):
-            for a in range(0, self.k_ie):
-                rand = np.random.randint(0, self.n_excite)
-                while self.CIJ[n + self.n_excite][rand] == 1:
-                    rand = np.random.randint(0, self.n_excite)
-                self.CIJ[n + self.n_excite][rand] = -1
-
-        # I to I connections
-        for n in range(0, self.n_inhib):
-            for a in range(0, self.k_ii):
-                rand = np.random.randint(self.n_excite, self.n_excite + self.n_inhib)
-                while rand == (n + self.n_excite) or self.CIJ[n + self.n_excite][rand] == 1:
-                    rand = np.random.randint(self.n_excite, self.n_excite + self.n_inhib)
-                self.CIJ[n + self.n_excite][rand] = -1
+        self.G = erdos_renyi_graph(self.n_neurons, p=self.p, directed=True)
+        self.CIJ = nx.convert_matrix.to_numpy_array(self.G)
+        self.CIJ[:self.n_excite,:self.n_excite] *= self.J_ee
+        self.CIJ[:self.n_excite,self.n_excite:] *= self.J_ei
+        self.CIJ[self.n_excite:,:self.n_excite] *= self.J_ie
+        self.CIJ[self.n_excite:,self.n_excite:] *= self.J_ii
 
     def generate_XIJ(self):
 
+        self.k = int(round(self.n_neurons*self.p))
         self.XIJ = np.zeros((self.n_neurons, self.n_in))
         for n in range(0, self.n_in):
             rng = default_rng()
@@ -243,7 +204,14 @@ class BrunelNetwork:
         ----------
         """
 
-        fig, ax = plt.subplots(1,2)
+        in_deg = [self.G.in_degree(n) for n in self.G.nodes()]
+        out_deg = [self.G.out_degree(n) for n in self.G.nodes()]
+        in_out = [in_deg[i]/out_deg[i] for i in range(len(in_deg))]
+        in_vals, in_bins = np.histogram(in_deg)
+        out_vals, out_bins = np.histogram(out_deg)
+        in_out_vals, in_out_bins = np.histogram(in_out)
+
+        fig, ax = plt.subplots(1,3)
         G = nx.convert_matrix.from_numpy_array(np.abs(self.CIJ))
         idxs = np.argwhere(self.CIJ != 0)
 
@@ -262,5 +230,10 @@ class BrunelNetwork:
         map = mpl.cm.ScalarMappable(cmap=colormap)
         ax[1].imshow(self.CIJ, cmap='gray')
         plt.colorbar(map, ax=ax[1], fraction=0.046, pad=0.04)
+
+        ax[2].plot(in_bins[:-1], in_vals, color='red', label='In')
+        ax[2].plot(out_bins[:-1], out_vals, color='blue', label='Out')
+        ax[2].plot(in_out_bins[:-1], in_out_vals, color='cyan', label='In/Out')
+        ax[2].legend()
 
         plt.tight_layout()

@@ -23,20 +23,20 @@ N = n_excite + n_inhib
 #Trials & Timing
 trials = 1 #number of trials
 dt = 0.001 #1ms
-T =  0.5 #100ms
+T =  1.0 #100ms
 tau_ref = 0.002 #3ms
 
 #Params and input
-p_ee, p_ei, p_ie, p_ii = [0.5, 0.1, 0.1, 0.5]
-p = 0.1
+J_xx = [2, 2, -2, -2] #J_ee, J_ei, J_ie, J_ii
+p = 0.2
 
 #Network
-f = BrunelNetwork(n_excite, n_inhib, n_in, p, p_ee, p_ei, p_ie, p_ii)
+f = BrunelNetwork(n_excite, n_inhib, n_in, p, J_xx)
 f.run_generator()
 f.plot()
 currents = Poisson(T,dt,n_in,trials=trials).to_currents(f.XIJ)
-
 lif = LIF(T, dt, tau_ref, f.CIJ, trials=trials)
 lif.call(currents)
 plot_activity(lif)
+
 plt.show()
