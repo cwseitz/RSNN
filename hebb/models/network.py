@@ -29,7 +29,7 @@ class SpatialNetwork2D:
         self.CIJ = np.zeros((self.M,self.M,N))
         self.J_ee, self.J_ei, self.J_ie, self.J_ii = J_xx
         self.in_idx = []
-        
+
         k = 0
         for i in range(self.M):
             for j in range(self.M):
@@ -77,28 +77,42 @@ class SpatialNetwork2D:
             return self.J_ie
 
 
-    def plot(self, colors=None, create_using=None, labels=False):
+    def plot(self, arrows=False):
 
         """
         Parameters
         ----------
         """
 
-        if create_using != None:
+        if arrows:
             arrows = True
 
-        fix, ax = plt.subplots(1,2)
-        ax[0].imshow(self.CIJ, cmap='gray')
-        G = nx.convert_matrix.from_numpy_array(self.CIJ, create_using=create_using)
-        pos = nx.spectral_layout(G)
-        colors = []
-        for n in G.nodes():
-            if n in self.in_idx:
-                colors.append('cornflowerblue')
-            else:
-                colors.append('red')
-        nx.draw_networkx_nodes(G, pos, node_color=colors, node_size=20, node_shape='x')
-        nx.draw_networkx_edges(G, pos, edge_color='black', alpha=0.2, arrows=False, arrowsize=10)
+        fix, ax = plt.subplots(1,3)
+        # ax[0].imshow(self.CIJ, cmap='gray')
+        # self.G = nx.convert_matrix.from_numpy_array(self.CIJ, create_using=nx.DiGraph)
+        # pos = nx.spectral_layout(self.G)
+        # colors = []
+        #
+        # for n in self.G.nodes():
+        #     if n in self.in_idx:
+        #         colors.append('cornflowerblue')
+        #     else:
+        #         colors.append('red')
+        #
+        # nx.draw_networkx_nodes(self.G, pos, ax=ax[1], node_color=colors, node_size=20, node_shape='x')
+        # nx.draw_networkx_edges(self.G, pos, ax=ax[1], edge_color='black', alpha=0.2, arrows=arrows, arrowsize=10)
+
+
+        in_deg = np.sum(self.CIJ, axis=1)
+        out_deg = np.sum(self.CIJ, axis=0)
+        in_vals, in_bins = np.histogram(in_deg)
+        out_vals, out_bins = np.histogram(out_deg)
+        in_out_vals, in_out_bins = np.histogram(in_deg/out_deg)
+
+        ax[2].plot(in_bins[:-1], in_vals, color='red', label='In')
+        ax[2].plot(out_bins[:-1], out_vals, color='blue', label='Out')
+        ax[2].plot(in_out_bins[:-1], in_out_vals, color='cyan', label='In/Out')
+        ax[2].legend()
 
 
         plt.tight_layout()

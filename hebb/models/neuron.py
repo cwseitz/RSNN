@@ -80,7 +80,7 @@ class Neuron:
 
 class ClampedLIF(Neuron):
 
-    def __init__(self,  T, dt, tau_ref, J, trials=1, tau=0.02, g_l=75, thr=20, dtype=np.float32):
+    def __init__(self,  T, dt, tau_ref, J, trials=1, tau=0.02, g_l=8.75, thr=20, dtype=np.float32):
 
         super(ClampedLIF, self).__init__(T, dt, tau_ref, J=J, trials=trials, dtype=dtype)
 
