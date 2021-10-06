@@ -20,10 +20,10 @@ T =  2.0 #100ms
 tau_ref = 0.002 #3ms
 
 #Network
-N = 6400
+N = 1600
 p = 0.2
 J_xx = [0.2, 0.2, -0.2, -0.2]
-f = SpatialNetwork2D(N, p, J_xx, sigma_e=50, sigma_i=50, alpha=500)
+f = SpatialNetwork2D(N, p, J_xx, sigma_e=2, sigma_i=2, alpha=10)
 f.plot()
 
 # #Clamped LIF

@@ -169,8 +169,8 @@ class NonStationaryOU:
 
         """
 
-        Integrate a Langevin equation for non-stationary white noise
-        (an Ornstein Uhlenbeck Process)
+        Monte-Carlo integration of a Langevin equation for
+        non-stationary white noise (an Ornstein Uhlenbeck Process)
 
         Parameters
         ----------
