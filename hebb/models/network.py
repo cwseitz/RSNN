@@ -5,6 +5,103 @@ import matplotlib as mpl
 from matplotlib import cm
 from numpy.random import default_rng
 from networkx.generators.random_graphs import erdos_renyi_graph
+from scipy.ndimage import gaussian_filter
+
+class SpatialNetwork2D:
+
+    """
+    This function generates a directed network where connection probabilities
+    are a function of space. The lattice axial dimension should be M = np.sqrt(N)
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
+
+    def __init__(self, N, p, J_xx, sigma_e=1, sigma_i=2, alpha=10):
+
+        self.p = p
+        self.N = N
+        self.M = int(round(np.sqrt(N)))
+        self.alpha = alpha
+        self.CIJ = np.zeros((self.M,self.M,N))
+        self.J_ee, self.J_ei, self.J_ie, self.J_ii = J_xx
+        self.in_idx = []
+        
+        k = 0
+        for i in range(self.M):
+            for j in range(self.M):
+                sigma = sigma_e
+                if np.random.uniform(0,1) < p:
+                    sigma = sigma_i
+                    self.in_idx.append(k)
+                f = np.zeros((self.M, self.M)); f[i,j] = self.alpha
+                x = np.random.uniform(0,1,size=f.shape)
+                g = gaussian_filter(f, sigma, mode='wrap')
+                self.CIJ[:,:,k] = np.array(x < g, dtype=np.int32)
+                k+=1
+
+        self.CIJ = np.reshape(self.CIJ, (self.N, self.N))
+        idx_x, idx_y = np.triu_indices(self.N) #upper triangle indices
+        for k in range(len(idx_x)):
+            i,j = idx_x[k], idx_y[k]
+            #check for a bidirectional synapse
+            if self.CIJ[i,j] == 1 and self.CIJ[j,i] == 1:
+                if np.random.binomial(1, 0.5) == 1:
+                    self.CIJ[j,i] = 0 #make neuron j the presynaptic neuron
+                    self.CIJ[i,j] *= self.get_psp(i,j,j)
+                else:
+                    self.CIJ[i,j] = 0 #make neuron j the postsynaptic neuron
+                    self.CIJ[j,i] *= self.get_psp(i,j,i)
+
+    def get_psp(self, i, j, pre):
+
+        """
+        Get the PSP based on neuron indices and the
+        known indices of inhibitory neurons
+        """
+
+        if i not in self.in_idx and j not in self.in_idx:
+            return self.J_ee
+        elif i in self.in_idx and j in self.in_idx:
+            return self.J_ii
+        elif i in self.in_idx and j not in self.in_idx and pre == i:
+            return self.J_ie
+        elif i in self.in_idx and j not in self.in_idx and pre == j:
+            return self.J_ei
+        elif i not in self.in_idx and j in self.in_idx and pre == i:
+            return self.J_ei
+        elif i not in self.in_idx and j in self.in_idx and pre == j:
+            return self.J_ie
+
+
+    def plot(self, colors=None, create_using=None, labels=False):
+
+        """
+        Parameters
+        ----------
+        """
+
+        if create_using != None:
+            arrows = True
+
+        fix, ax = plt.subplots(1,2)
+        ax[0].imshow(self.CIJ, cmap='gray')
+        G = nx.convert_matrix.from_numpy_array(self.CIJ, create_using=create_using)
+        pos = nx.spectral_layout(G)
+        colors = []
+        for n in G.nodes():
+            if n in self.in_idx:
+                colors.append('cornflowerblue')
+            else:
+                colors.append('red')
+        nx.draw_networkx_nodes(G, pos, node_color=colors, node_size=20, node_shape='x')
+        nx.draw_networkx_edges(G, pos, edge_color='black', alpha=0.2, arrows=False, arrowsize=10)
+
+
+        plt.tight_layout()
 
 class FractalNetwork:
 
@@ -223,7 +320,7 @@ class BrunelNetwork:
 
         colors = [G[u][v]['color'] for u,v in G.edges()]
         pos = nx.spring_layout(G)
-        nx.draw(G, pos, ax=ax[0], alpha=0.01, node_size=5, node_color='black',
+        nx.draw(G, pos, ax=ax[0], alpha=0.1, node_size=5, node_color='black',
                 edge_color=colors, with_labels=labels)
         ax[1].imshow(self.CIJ, cmap='gray')
         colormap = cm.get_cmap('gray')
