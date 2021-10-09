@@ -15,6 +15,64 @@ from scipy.stats import norm
 ## Email: cwseitz@uchicago.edu
 ################################################################################
 
+
+class ExInOU:
+
+    def __init__(self, T, dt, mu, cov, thr=20, tau=0.002, v0=0, dtype=np.float32):
+
+        """
+
+        An Ornstein-Uhlenbeck neuron integrating two types of synaptic
+        current: excitatory and inhibitory when each are assumed to be a
+        Gaussian White Noise (GWN). Excitatory and inhibitory noise
+        can be correlated or uncorrelated.
+
+        Parameters
+        ----------
+
+        T: float
+            Duration of the simulation (in seconds)
+        dt: float
+            Time resolution of the simulation
+        v0 : float
+            Initial condition for the stochastic variable V
+        ex_in_mu: float
+            Mean of excitatory and inhibitory noise
+        ex_in_cov: float
+            Covariance matrix for excitatory and inhibitory noise
+        batch_size: int
+            Number of simulations to run
+
+        """
+
+        #Params
+        self.T = T
+        self.dt = dt
+        self.v0 = v0
+        self.thr = thr
+        self.mu = mu
+        self.cov = cov
+        self.nsteps = 1 + int(round(T/dt))
+        self.N = len(mu)
+        self.v = np.zeros((self.N, self.nsteps))
+
+    def forward(self):
+
+        self.v[0,:] = self.v0
+
+        #generate noise and transpose to keep a consistent shape
+        self.eta = np.random.multivariate_normal(self.mu, self.cov, size=(self.nsteps,)).T
+        for i in range(self.N):
+            j = 0
+            while j < self.nsteps:
+                if self.v[i,j-1] >= self.thr:
+                    self.v[i,j] = 50
+                    self.v[i,j+1] = 0
+                    j += 1 #skip a step
+                else:
+                    self.v[i,j] = self.v[i,j-1] - self.dt*self.v[i,j-1] + self.eta[i,j-1]
+                j += 1
+
 class Brownian:
 
     def __init__(self, t, V0, sigma, batch_size=1, dtype=np.float32):
