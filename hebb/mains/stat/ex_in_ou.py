@@ -5,6 +5,7 @@ from matplotlib.lines import Line2D
 from matplotlib import cm
 from hebb.util import *
 from hebb.models import *
+from numpy.fft import fft, fftfreq
 
 def multi_gauss(r, mu, sigma):
 
@@ -66,7 +67,8 @@ N_12 = np.array(N_12)
 N_12_std = np.sqrt(np.array(N_12_var))
 
 custom_lines = [Line2D([0],[0],color='salmon', lw=4),Line2D([0],[0],color='cornflowerblue', lw=4)]
-fig, ax = plt.subplots(2,2,figsize=(5,5))
+fig, ax = plt.subplots(2,2,figsize=(5,4))
+Z, Z_3 = func(r, np.array([-1,0]), np.array([[0.5,0],[0,0.5]]), np.array([1,0]), np.array([[0.5,0],[0,0.5]]))
 ax[0,0].contour(X, Y, Z, cmap=cm.Reds)
 ax[0,0].grid(False)
 ax[0,0].set_xticks([])
@@ -74,18 +76,48 @@ ax[0,0].set_yticks([])
 ax[0,0].set_xlabel(r'$x_1$')
 ax[0,0].set_ylabel(r'$x_2$')
 ax[0,0].contour(X, Y, Z_3, cmap=cm.Blues)
-ax[0,0].legend(custom_lines, [r'$f_{\alpha} + f_{\beta}$', r'$f_{\alpha\beta}$'])
+ax[0,0].legend(custom_lines, [r'$f_{\alpha} + f_{\beta}$', r'$f_{\alpha}f_{\beta}$'])
 ax[0,1].plot(N_12_std[0], color='black', label='$\sigma$')
 ax[0,1].plot(N_12[0], color='cyan', label='$\mu$')
 ax[0,1].set_xlabel(r'$\mathbf{\Delta}_{\alpha\beta}$')
 ax[0,1].legend()
+
 ax[1,0].imshow(N_12, cmap='coolwarm', vmin=0, vmax=N_12.max())
 ax[1,0].set_xlabel(r'$\mathbf{\Delta}_{\alpha\beta}$')
 ax[1,0].set_ylabel(r'$\mathbf{\sigma}$')
+colormap = cm.get_cmap('coolwarm')
+norm = mpl.colors.Normalize(vmin=0, vmax=N_12.max())
+map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+plt.colorbar(map, ax=ax[1,0], fraction=0.046, pad=0.04, label=r'$\langle\mathbf{N_{\alpha\beta}}\rangle$')
+
 ax[1,1].imshow(N_12_std, cmap='coolwarm', vmin=0, vmax=N_12_std.max())
 ax[1,1].set_ylabel(r'$\mathbf{\sigma}$')
 ax[1,1].set_xlabel(r'$\mathbf{\Delta}_{\alpha\beta}$')
+colormap = cm.get_cmap('coolwarm')
+norm = mpl.colors.Normalize(vmin=0, vmax=N_12_std.max())
+map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+plt.colorbar(map, ax=ax[1,1], fraction=0.046, pad=0.04, label=r'$Var\;(\mathbf{N_{\alpha\beta}})$')
 plt.tight_layout()
+
+fig, ax = plt.subplots(1,3)
+trials = 1 #number of trials
+dt = 0.001 #1ms
+T =  10.0 #100ms
+
+rates = np.random.exponential(1,(1000,trials,1))
+rates = np.repeat(rates, 1+int(round(T/dt)), axis=2)
+t = np.arange(T,dt)
+rate = np.sin(t)**2
+
+ex = Poisson(T,dt,1000,rates=rates,trials=trials); ex.run_generator()
+inh = Poisson(T,dt,1000,rates=rates,trials=trials); inh.run_generator()
+i = np.sum(ex.spikes[:,0,:], axis=0) - np.sum(inh.spikes[:,0,:], axis=0)
+
+t = np.arange(256)
+sp = fft(i)
+ax[0].plot(i)
+ax[1].plot(np.abs(sp)**2)
+ax[2].imshow(ex.spikes[:,0,:])
 plt.show()
 
 # T = 1
@@ -102,7 +134,7 @@ plt.show()
 # ax[0].set_ylabel('$\mathbf{PSP_2} \; [\mathrm{mV}]$')
 # ax[1].plot(ex_in_ou.v[0,:], color='red')
 # ax[1].plot(ex_in_ou.v[1,:], color='blue')
-#
+# plt.tight_layout()
 #
 # rho = 1e4
 # sigma_1 = 100
@@ -117,7 +149,7 @@ plt.show()
 # prod = im_1*im_2
 # ax[2].plot(im_1[49,:], color='red', label=f'$\mu={np.round(np.sum(im_1), 2)}$')
 # ax[2].plot(im_2[49,:], color='blue', label=f'$\mu={np.round(np.sum(im_2), 2)}$')
-# ax[2].plot(prod[49,:], color='cyan', label=f'$\mu={np.round(np.sum(prod), 2)}$')
+# ax[2].plot(prod[49,:], color='red', label=f'$\mu={np.round(np.sum(prod), 2)}$')
 # # ax[2].set_xlim([40, 60])
 # ax[2].legend()
 #

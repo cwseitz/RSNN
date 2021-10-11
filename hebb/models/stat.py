@@ -320,8 +320,6 @@ class Poisson:
             x = rng.choice(self.N, size=self.random_select, replace=False)
             self.spikes[x,:,:] = 0
 
-        return self.spikes
-
     def to_currents(self, J):
         self.currents = np.einsum('ij,jhk->ihk', J, self.spikes)
         return self.currents
