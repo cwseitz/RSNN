@@ -6,6 +6,7 @@ from matplotlib import cm
 from numpy.random import default_rng
 from networkx.generators.random_graphs import erdos_renyi_graph
 from scipy.ndimage import gaussian_filter
+from hebb.util import *
 
 class SpatialNetwork2D:
 
@@ -20,15 +21,17 @@ class SpatialNetwork2D:
     -------
     """
 
-    def __init__(self, N, p, J_xx, sigma_e=1, sigma_i=2, alpha=10):
+    def __init__(self, N, p, J_xx, sigma_e=1, sigma_i=2, delta=1, alpha=10):
 
         self.p = p
         self.N = N
         self.M = int(round(np.sqrt(N)))
         self.alpha = alpha
+        self.delta = delta
         self.CIJ = np.zeros((self.M,self.M,N))
         self.J_ee, self.J_ei, self.J_ie, self.J_ii = J_xx
         self.in_idx = []
+        self.make_grid()
 
         k = 0
         for i in range(self.M):
@@ -76,7 +79,6 @@ class SpatialNetwork2D:
         elif i not in self.in_idx and j in self.in_idx and pre == j:
             return self.J_ie
 
-
     def plot(self, arrows=False):
 
         """
@@ -103,20 +105,48 @@ class SpatialNetwork2D:
 
         nx.draw_networkx_nodes(self.G, pos, ax=ax[1], node_color=colors, node_size=20, node_shape='x')
         nx.draw_networkx_edges(self.G, pos, ax=ax[1], edge_color='black', alpha=0.2, arrows=arrows, arrowsize=10)
-
-        # in_deg = np.sum(self.CIJ, axis=1)
-        # out_deg = np.sum(self.CIJ, axis=0)
-        # in_vals, in_bins = np.histogram(in_deg)
-        # out_vals, out_bins = np.histogram(out_deg)
-        # in_out_vals, in_out_bins = np.histogram(in_deg/out_deg)
-        #
-        # ax[2].plot(in_bins[:-1], in_vals, color='red', label='In')
-        # ax[2].plot(out_bins[:-1], out_vals, color='blue', label='Out')
-        # ax[2].plot(in_out_bins[:-1], in_out_vals, color='cyan', label='In/Out')
-        # ax[2].legend()
-
-
         plt.tight_layout()
+
+    def make_grid(self):
+
+        X = np.arange(0, self.M, self.delta)
+        Y = np.arange(0, self.M, self.delta)
+        self.X, self.Y = np.meshgrid(X, Y)
+        self.r = np.empty(self.X.shape + (2,))
+        self.r[:,:,0] = self.X
+        self.r[:,:,1] = self.Y
+
+    def pairwise_stats(self, min_sep, max_sep, min_sig, max_sig, rho_1=0.1, rho_2=0.1):
+
+        """
+        Statistics of pairwise connectivity
+        (min_sep, max_sep) are integer multiples of the grid spacing delta
+        """
+
+        def f(mu_1, sigma_1, mu_2, sigma_2, rho_1, rho_2):
+
+            f_1 = rho_1*multi_gauss(self.r, mu_1, sigma_1)
+            f_2 = rho_2*multi_gauss(self.r, mu_2, sigma_2)
+            f_12 = f_1*f_2
+            return f_1, f_2, f_12
+
+        def g(sep, sig):
+            mu = np.array([sep,0])
+            sigma = np.array([[sig,0],[0,sig]])
+            return mu, sigma
+
+        seps = self.delta*np.arange(min_sep, max_sep, 5) #range for the distance between neurons
+        sigs = self.delta*np.arange(min_sig, max_sig, 5) #range for the broadness of connections
+        self.N = np.zeros((len(sigs), len(seps)))
+        self.N_var = np.zeros_like(self.N)
+
+        for i, sig in enumerate(sigs):
+            for j, sep in enumerate(seps):
+                mu_1, sigma_1 = g(sep, sig)
+                mu_2, sigma_2 = g(-sep, sig)
+                f_1, f_2, f_12 = f(mu_1, sigma_1, mu_2, sigma_2, rho_1, rho_2)
+                self.N[i,j] = np.sum(f_1+f_2)
+                self.N_var[i,j] = np.sum(f_12*(1-f_12))
 
 class FractalNetwork:
 

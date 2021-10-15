@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 from .network import *
 from ..util import *
 from matplotlib import cm
-# from skimage.io import imsave
 
 ################################################################################
 ##

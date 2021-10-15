@@ -24,26 +24,7 @@ N = 1600
 p = 0.2
 J_xx = [0.2, 0.2, -0.2, -0.2]
 f = SpatialNetwork2D(N, p, J_xx, sigma_e=2, sigma_i=2, alpha=10)
-f.plot()
-
-# #Clamped LIF
-# lif = ClampedLIF(T, dt, tau_ref, f.CIJ, trials=trials)
-# shape = lif.shape
-#
-# #Poisson spikes for clamp
-# r0 = 20 #Hz
-# N,trials,steps = shape
-# clamp = np.zeros((N,trials,steps))
-# x = np.random.randint(0,N,500)
-# clamp[x,:,:] = 1
-# rates = clamp*r0
-# poisson = Poisson(T,dt,N,trials=trials,rates=rates)
-# spikes = poisson.run_generator()
-#
-# #Run the sim
-# lif.call(spikes, clamp)
-# plot_activity(lif)
-# # unit_i_stats(lif)
-# # pop_v_stats(lif)
-# plot_unit(lif, unit=105)
+f.make_grid()
+f.pairwise_stats(1, 100, 1, 500, rho_1=0.75, rho_2=0.75)
+fig_1(f)
 plt.show()

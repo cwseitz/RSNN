@@ -1,5 +1,8 @@
 import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 from copy import deepcopy
+from matplotlib import cm
 from scipy.stats import norm
 
 ################################################################################
@@ -16,66 +19,9 @@ from scipy.stats import norm
 ################################################################################
 
 
-class ExInOU:
-
-    def __init__(self, T, dt, mu, cov, thr=20, tau=0.002, v0=0, dtype=np.float32):
-
-        """
-
-        An Ornstein-Uhlenbeck neuron integrating two types of synaptic
-        current: excitatory and inhibitory when each are assumed to be a
-        Gaussian White Noise (GWN). Excitatory and inhibitory noise
-        can be correlated or uncorrelated.
-
-        Parameters
-        ----------
-
-        T: float
-            Duration of the simulation (in seconds)
-        dt: float
-            Time resolution of the simulation
-        v0 : float
-            Initial condition for the stochastic variable V
-        ex_in_mu: float
-            Mean of excitatory and inhibitory noise
-        ex_in_cov: float
-            Covariance matrix for excitatory and inhibitory noise
-        batch_size: int
-            Number of simulations to run
-
-        """
-
-        #Params
-        self.T = T
-        self.dt = dt
-        self.v0 = v0
-        self.thr = thr
-        self.mu = mu
-        self.cov = cov
-        self.nsteps = 1 + int(round(T/dt))
-        self.N = len(mu)
-        self.v = np.zeros((self.N, self.nsteps))
-
-    def forward(self):
-
-        self.v[0,:] = self.v0
-
-        #generate noise and transpose to keep a consistent shape
-        self.eta = np.random.multivariate_normal(self.mu, self.cov, size=(self.nsteps,)).T
-        for i in range(self.N):
-            j = 0
-            while j < self.nsteps:
-                if self.v[i,j-1] >= self.thr:
-                    self.v[i,j] = 50
-                    self.v[i,j+1] = 0
-                    j += 1 #skip a step
-                else:
-                    self.v[i,j] = self.v[i,j-1] - self.dt*self.v[i,j-1] + self.eta[i,j-1]
-                j += 1
-
 class Brownian:
 
-    def __init__(self, t, V0, sigma, batch_size=1, dtype=np.float32):
+    def __init__(self, t, V0, sigma, trials=1, dtype=np.float32):
 
         """
 
@@ -89,7 +35,7 @@ class Brownian:
         self.nsteps = len(t)
         self.dt = np.mean(np.diff(t))
         self.sigma = sigma
-        self.batch_size = batch_size
+        self.trials = trials
         self.V = []
 
     def forward(self):
@@ -134,7 +80,7 @@ class Brownian:
 
         self.dV = []
 
-        for i in range(self.batch_size):
+        for i in range(self.trials):
 
             # For each element of x0, generate a sample of n numbers from a normal distribution
             self.dV_i = norm.rvs(size=(self.nsteps,), scale=self.sigma*np.sqrt(self.dt))
@@ -147,9 +93,9 @@ class Brownian:
         return self.V
 
 
-class StationaryOU:
+class OrnsteinUhlenbeck:
 
-    def __init__(self, t, tau, sigma, dv=0.001, batch_size=1, v_max=1, V_R=-1, dtype=np.float32):
+    def __init__(self, t, tau, sigma, dv=0.001, trials=1, v_max=1, V_R=-1, dtype=np.float32):
 
         """
 
@@ -168,7 +114,7 @@ class StationaryOU:
             (see equation above)
         sigma: float
             Noise amplitude
-        batch_size: int
+        trials: int
             Number of simulations to run
         v_min : int
             Minimum value for the voltage domain
@@ -185,14 +131,14 @@ class StationaryOU:
         self.V_R = V_R
         self.alpha = 1/tau
         self.sigma = sigma
-        self.batch_size = batch_size
+        self.trials = trials
         self.v_max = v_max
         self.dv = dv
         self.n_v = int(round(2*self.v_max/self.dv))
         self._V = np.linspace(-self.v_max, self.v_max, self.n_v)
 
         #Arrays for simulation history
-        self.V = np.zeros((self.nsteps, self.batch_size))
+        self.V = np.zeros((self.nsteps, self.trials))
         self.P_S = np.zeros((self.n_v, self.nsteps)); self.P_S[0,:] = 1
         self.P_A = deepcopy(self.P_S)
         self.P_N = deepcopy(self.P_S)
@@ -216,14 +162,14 @@ class StationaryOU:
     def forward(self):
 
         self.V[0,:] = self.V_R
-        noise = np.random.normal(loc=0.0,scale=1.0,size=(self.nsteps,self.batch_size))*np.sqrt(self.dt) #define noise process
+        noise = np.random.normal(loc=0.0,scale=1.0,size=(self.nsteps,self.trials))*np.sqrt(self.dt) #define noise process
         for i in range(1,self.nsteps):
-            for j in range(self.batch_size):
+            for j in range(self.trials):
                 self.V[i,j] = self.V[i-1,j] - self.dt*self.alpha*(self.V[i-1,j]) + self.sigma*noise[i,j]
 
 class NonStationaryOU:
 
-    def __init__(self, nsteps, V_R, tau, mu, sigma, dt=0.001, batch_size=1, xmin=0, xmax=1, dtype=np.float32):
+    def __init__(self, T, dt, tau, stim, sigma, trials=1, xmin=0, xmax=1, dtype=np.float32):
 
         """
 
@@ -233,44 +179,101 @@ class NonStationaryOU:
         Parameters
         ----------
 
-        nsteps: float
-            Number of time steps before the simulation terminates
+        T: float
+            Duration of the simulation in seconds
         V0 : float
             Initial condition for the stochastic variable V
         alpha: float
             Rate parameter for the linear drift of the white noise process
             (see equation above)
-        mu: ndarray
-            The mean of the non-stationary white noise as a function of time
+        stim: ndarray
+            The stimuluss
         sigma: float
             Noise amplitude
-        batch_size: int
+        trials: int
             Number of simulations to run
 
         """
 
         #Params
-        self.nsteps = nsteps
+        self.nsteps = int(round(T/dt))
         self.dt = dt
-        self.V_R = V_R
         self.alpha = 1/tau
-        self.mu = mu
+        self.stim = stim
         self.sigma = sigma
-        self.batch_size = batch_size
+        self.trials = trials
         self.xmin = xmin
         self.xmax = xmax
 
         #Arrays for simulation history
-        self.V = np.zeros((self.nsteps, self.batch_size))
+        self.V = np.zeros((self.nsteps, self.trials))
         self.P = []
 
     def forward(self):
 
-        self.V[0,:] = self.V_R
-        noise = np.random.normal(loc=0.0,scale=1.0,size=(self.nsteps,self.batch_size))*np.sqrt(self.dt) #define noise process
+        noise = np.random.normal(loc=0.0,scale=1.0,size=(self.nsteps,self.trials))*np.sqrt(self.dt) #define noise process
         for i in range(1,self.nsteps):
-            for j in range(self.batch_size):
-                self.V[i,j] = self.V[i-1,j] - self.dt*self.alpha*(self.V[i-1,j]) + self.mu[i] + self.sigma*noise[i,j]
+            for j in range(self.trials):
+                self.V[i,j] = self.V[i-1,j] - self.dt*self.alpha*(self.V[i-1,j]) + self.stim[i] + self.sigma*noise[i,j]
+
+    def forward(self):
+
+        self.v[0,:] = self.v0
+
+        #generate noise and transpose to keep a consistent shape
+        self.eta = np.random.multivariate_normal(0, np.eye(), size=(self.nsteps,))
+        for i in range(self.trials):
+            j = 0
+            while j < self.nsteps:
+                if self.v[i,j-1] >= self.thr:
+                    self.v[i,j] = 50
+                    self.v[i,j+1] = 0
+                    j += 1 #skip a step
+                else:
+                    self.v[i,j] = self.v[i,j-1] - self.dt*self.v[i,j-1] + self.eta[i,j-1]
+                j += 1
+
+    def plot_mu(self):
+        fig, ax = plt.subplots()
+        ax.plot(np.arange(self.nsteps)*self.dt, self.stim, color='blue')
+
+    def plot_hist(self):
+
+        colormap = cm.get_cmap('coolwarm')
+        colors = colormap(np.linspace(0, 1, self.nsteps))
+        norm = mpl.colors.Normalize(vmin=0, vmax=self.nsteps)
+
+        fig, ax = plt.subplots()
+
+        for i in range(1, nsteps):
+            vals, bins = np.histogram(self.V[i,:], density=True)
+            ax.plot(bins[:-1], vals, color=colors[i])
+
+        ax.set_xlim([xmin, xmax])
+        ax.set_xlabel('V')
+        ax.set_ylabel('P(V)')
+
+        fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=colormap), label='Time')
+        plt.tight_layout()
+        plt.grid()
+
+    def plot_trajectories(self):
+
+        colormap = cm.get_cmap('viridis')
+        colors = colormap(np.linspace(0, 1, self.trials))
+        norm = mpl.colors.Normalize(vmin=0, vmax=self.trials)
+
+        fig, ax = plt.subplots()
+
+        for i in range(self.trials):
+            ax.plot(self.V[:,i], color=colors[i], alpha=0.75)
+
+        ax.set_xlabel('Time')
+        ax.set_ylabel('V')
+
+        plt.tight_layout()
+        plt.grid()
+
 
 class Poisson:
 
