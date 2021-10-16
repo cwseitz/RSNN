@@ -13,12 +13,6 @@ class SpatialNetwork2D:
     """
     This function generates a directed network where connection probabilities
     are a function of space. The lattice axial dimension should be M = np.sqrt(N)
-
-    Parameters
-    ----------
-
-    Returns
-    -------
     """
 
     def __init__(self, N, p, J_xx, sigma_e=1, sigma_i=2, delta=1, alpha=10):

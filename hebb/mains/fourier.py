@@ -29,23 +29,19 @@ rates = np.einsum('ijk,ik -> ijk', rates, s)
 rates = np.einsum('ijk,ik -> ijk', rates, clamp)
 poisson = Poisson(T,dt,N,rates=rates, trials=trials)
 poisson.run_generator()
+spikes = poisson.spikes
 
 #Initialize network
 p = 0.2
 J_xx = [1, 1, -1, -1]
-f = SpatialNetwork2D(N, p, J_xx, sigma_e=2, sigma_i=2, alpha=10)
+net = SpatialNetwork2D(N, p, J_xx, sigma_e=2, sigma_i=2, alpha=10)
 
 #Initialize neuron model
-lif = ClampedLIF(T, dt, tau_ref, f.CIJ, trials=trials)
-lif.call(poisson.spikes, clamped_idx)
+lif = ClampedLIF(T, dt, tau_ref, net.CIJ, trials=trials)
+lif.call(spikes, clamped_idx)
 
-#Figure
-ax0, ax1, ax2, ax3, ax4, ax5 = fig_2()
+#Figures
 focal = 10
-add_spectral_graph(ax0, f.CIJ, f.in_idx)
-add_raster(ax1, poisson.spikes, n_units=100)
-add_activity(ax2, poisson.spikes)
-add_unit_voltage(ax3, lif, unit=focal)
-add_unit_current(ax4, lif, unit=focal)
-add_unit_spikes(ax5, lif, unit=lif.no_clamp_idx[focal])
+fig_1(net)
+fig_2(lif, net, spikes, focal=focal)
 plt.show()
