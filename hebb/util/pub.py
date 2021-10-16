@@ -23,3 +23,19 @@ def fig_1(SN_2D):
     ax[1].set_xlabel(r'$\mathbf{\Delta}_{ij}$')
 
     plt.tight_layout()
+
+def fig_2():
+
+    fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+    ax.set_xticks([]); ax.set_yticks([])
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax0 = ax.inset_axes([0, 0.65, 0.4, 0.45])
+    ax1 = ax.inset_axes([0.5, 0.9, 0.5, 0.2])
+    ax2 = ax.inset_axes([0.5, 0.65, 0.5, 0.2])
+    ax3 = ax.inset_axes([0, 0.4, 1, 0.15])
+    ax4 = ax.inset_axes([0, 0.2, 1, 0.15])
+    ax5 = ax.inset_axes([0, 0, 1, 0.15])
+    return [ax0, ax1, ax2, ax3, ax4, ax5]

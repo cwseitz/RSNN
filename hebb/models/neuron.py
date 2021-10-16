@@ -1,10 +1,9 @@
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
-# import pims
+from matplotlib import cm
 from .network import *
 from ..util import *
-from matplotlib import cm
 
 ################################################################################
 ##
@@ -125,24 +124,34 @@ class ClampedLIF(Neuron):
     def zero_state(self):
 
         #Initialize state variables
-        self.I = np.zeros(shape=self.shape, dtype=self.dtype)
-        self.V = np.zeros(shape=self.shape, dtype=self.dtype)
-        self.Z = np.zeros(shape=self.shape, dtype=np.int8)
-        self.R = np.zeros(shape=(self.N,self.trials,self.nsteps+self.ref_steps), dtype=np.int8)
+        self.I = np.zeros(shape=(self.M, self.trials, self.nsteps), dtype=self.dtype)
+        self.V = np.zeros(shape=(self.M, self.trials, self.nsteps), dtype=self.dtype)
+        self.R = np.zeros(shape=(self.M,self.trials,self.nsteps+self.ref_steps), dtype=np.bool)
+        self.Z = np.zeros(shape=(self.N, self.trials, self.nsteps), dtype=np.bool)
 
-    def call(self, spikes, clamp):
+    def call(self, spikes, clamp_idx):
 
         """
+
+        This function will infer the indices of clamped neurons based
+        on the first axis of 'spikes'. The user is responsible for
+        determining which neurons are clamped (e.g., random, a group, etc.)
+
         spikes : 3D ndarray
             Used to clamp the observable state Z of specified neurons, often
             to use a subnetwork as an 'input population'.
-        clamp : 3D ndarray
-            A binary tensor where a value of '1' indicates that neuron of
-            a particular batch is clamped at that time
+        clamp_idx : 3D ndarray
+            Indices along first axis indicating which neurons are clamped
         """
 
         self.spikes = spikes
-        self.clamp = np.mod(clamp + 1,2) #invert clamp (see usage below)
+        self.clamp = np.zeros((self.N,))
+        self.clamp[clamp_idx] = 1
+        self.clamp = np.mod(self.clamp + 1,2) #invert clamp (see usage below)
+        self.no_clamp_idx = np.argwhere(self.clamp > 0)
+        self.no_clamp_idx = self.no_clamp_idx.reshape((self.no_clamp_idx.shape[0],))
+        self.M = len(self.no_clamp_idx)
+        self.J = self.J[self.no_clamp_idx,:]
         self.zero_state()
 
         start, end = 1, self.nsteps
@@ -150,12 +159,12 @@ class ClampedLIF(Neuron):
         for i in range(start, end):
 
             #enforce the clamp
-            self.Z[:,:,i-1] = self.Z[:,:,i-1]*self.clamp[:,:,i-1] + self.spikes[:,:,i-1]
+            self.Z[:,:,i-1] = np.einsum('ij,i -> ij', self.Z[:,:,i-1], self.clamp) + self.spikes[:,:,i-1]
             self.I[:,:,i] =  np.matmul(self.J, self.Z[:,:,i-1])
             #apply spike function to previous time step
-            self.Z[:,:,i] = self.spike_function(self.V[:,:,i-1])
+            self.Z[self.no_clamp_idx,:,i] = self.spike_function(self.V[:,:,i-1])
             #check if the neuron spiked in the last tau_ref time steps
-            self.R[:,:,i+self.ref_steps] = np.sum(self.Z[:,:,i-self.ref_steps:i+1], axis=-1)
+            self.R[:,:,i+self.ref_steps] = np.sum(self.Z[self.no_clamp_idx,:,i-self.ref_steps:i+1], axis=-1)
             self.V[:,:,i] = self.V[:,:,i-1] - self.dt*self.V[:,:,i-1]/self.tau +\
                             self.I[:,:,i-1]/(self.tau*self.g_l)
             #Enforce refractory period

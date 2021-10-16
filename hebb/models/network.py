@@ -79,33 +79,6 @@ class SpatialNetwork2D:
         elif i not in self.in_idx and j in self.in_idx and pre == j:
             return self.J_ie
 
-    def plot(self, arrows=False):
-
-        """
-        Parameters
-        ----------
-        """
-
-        if arrows:
-            arrows = True
-
-        fix, ax = plt.subplots(1,2)
-        ax[0].imshow(self.CIJ, cmap='gray')
-        ax[0].set_xlabel("Presynaptic Neuron")
-        ax[0].set_ylabel("Postsynaptic Neuron")
-        self.G = nx.convert_matrix.from_numpy_array(self.CIJ, create_using=nx.DiGraph)
-        pos = nx.spectral_layout(self.G)
-        colors = []
-
-        for n in self.G.nodes():
-            if n in self.in_idx:
-                colors.append('cornflowerblue')
-            else:
-                colors.append('red')
-
-        nx.draw_networkx_nodes(self.G, pos, ax=ax[1], node_color=colors, node_size=20, node_shape='x')
-        nx.draw_networkx_edges(self.G, pos, ax=ax[1], edge_color='black', alpha=0.2, arrows=arrows, arrowsize=10)
-        plt.tight_layout()
 
     def make_grid(self):
 
