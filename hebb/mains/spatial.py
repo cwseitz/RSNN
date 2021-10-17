@@ -14,6 +14,9 @@ from hebb.models import *
 ##################################################
 
 #Network
-N = 100
+N = 525
 p_e = 0.8
-f = GaussianNetwork(N, p_e, sigma_e=2, sigma_i=2, alpha=10)
+net = GaussianNetwork(N, p_e, sigma_e=1, sigma_i=1, alpha=10)
+fig, ax = plt.subplots()
+add_spectral_graph(ax, net)
+plt.show()
