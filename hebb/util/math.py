@@ -29,25 +29,50 @@ def prod_gauss(mu_1, sigma_1, mu_2, sigma_2):
 
     return mu_3, sigma_3
 
-def hogn_avg_out_deg(net, sigmas):
+def dist(r_i, r_j, M, delta):
+    x1, y1 = r_i; x2, y2 = r_j
+    dx = np.minimum(np.abs(x1-x2),M*delta-np.abs(x1-x2))
+    dy = np.minimum(np.abs(y1-y2),M*delta-np.abs(y1-y2))
+    dr = np.sqrt(dx**2 + dy**2)
+    return dr
+
+def hogn_avg_out_deg(N, sigma, rho, delta, x0=0, y0=0):
 
     """
     Average out degree of a homogeneous gaussian network
     """
 
-    def compute_n_ij(net, sigma):
+    M = int(round(np.sqrt(N)))
+    grid = np.zeros((M,M))
 
-        sum = 0
-        for x,y in zip(net.X[1:], net.Y[1:]):
-            a = net.rho/(np.sqrt(2*np.pi)*sigma)
-            k_ij = a*np.exp(-0.5*(x**2 + y**2)/(sigma**2))
-            z_ij = 1 + k_ij**2
-            sum += k_ij*(1-k_ij)/z_ij
+    for x in range(M):
+        for y in range(M):
+            if x != x0 or y != y0:
+                a = rho/(np.sqrt(2*np.pi)*sigma)
+                dr_ij = dist((x0,y0), (x,y), M, delta)
+                k_ij = a*np.exp(-0.5*(dr_ij**2)/(sigma**2))
+                z_ij = 2*k_ij + (1-k_ij)**2
+                grid[x,y] = k_ij/z_ij
 
-        return sum
+    return grid
 
-    avg_n_ij = np.zeros_like(sigmas)
-    for i, sigma in enumerate(sigmas):
-        print(sigma*np.sqrt(2*np.pi)*np.exp(1/(2*sigma**2)))
-        avg_n_ij[i] = compute_n_ij(net, sigma)
-    return avg_n_ij
+def hogn_var_out_deg(N, sigma, rho, delta, x0=0, y0=0):
+
+    """
+    Variance in the out degree of a homogeneous gaussian network
+    """
+
+    M = int(round(np.sqrt(N)))
+    grid = np.zeros((M,M))
+
+    for x in range(M):
+        for y in range(M):
+            if x != x0 or y != y0:
+                a = rho/(np.sqrt(2*np.pi)*sigma)
+                dr_ij = dist((x0,y0), (x,y), M, delta)
+                k_ij = a*np.exp(-0.5*(dr_ij**2)/(sigma**2))
+                z_ij = 2*k_ij + (1-k_ij)**2
+                p_ij = k_ij/z_ij
+                grid[x,y] = p_ij*(1-p_ij)
+
+    return grid

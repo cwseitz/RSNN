@@ -21,9 +21,9 @@ class HOGN:
     def __init__(self, N, sigma=5, delta=1, rho=1):
 
         #check sigma value to ensure reasonable connection probabilities
-        min_sig = 5
-        if sigma < min_sig:
-             raise ValueError(f'Sigma value is below the minimum value {min_sig}')
+        # min_sig = 5
+        # if sigma < min_sig:
+        #      raise ValueError(f'Sigma value is below the minimum value {min_sig}')
 
         #check rho value
         max_rho = sigma*np.sqrt(2*np.pi)*np.exp(delta**2/(2*sigma**2))
@@ -51,9 +51,9 @@ class HOGN:
             r_j = self.X[j], self.Y[j] #neuron j grid coordinates
             dr_ij = self.dist(r_i, r_j, self.M)
             k_ij = self.kern(dr_ij, sigmas[i])
-            Z = 1 + k_ij**2
+            z_ij= 2*k_ij + (1-k_ij)*(1-k_ij)
             x = np.random.uniform(0,1)
-            p_ij = k_ij*(1-k_ij)/Z
+            p_ij = k_ij/z_ij
             if x <= p_ij:
                 self.C[i,j] = 1
             elif p_ij < x <= 2*p_ij:
