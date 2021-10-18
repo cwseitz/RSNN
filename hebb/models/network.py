@@ -7,6 +7,78 @@ from numpy.random import default_rng
 from networkx.generators.random_graphs import erdos_renyi_graph
 from hebb.util import *
 
+
+class HOGN:
+
+    """
+    This function generates a homogeneous gaussian.
+    The lattice axial dimension should be M = np.sqrt(N)
+
+    Generates a connectivity matrix Cij in O(n^2) time
+
+    """
+
+    def __init__(self, N, sigma=5, delta=1, rho=1):
+
+        #check sigma value to ensure reasonable connection probabilities
+        min_sig = 5
+        if sigma < min_sig:
+             raise ValueError(f'Sigma value is below the minimum value {min_sig}')
+
+        #check rho value
+        max_rho = sigma*np.sqrt(2*np.pi)*np.exp(delta**2/(2*sigma**2))
+        print(f'Maximum rho value: {max_rho}')
+        if rho > max_rho:
+             raise ValueError(f'Rho value is beyond the maximum value {max_rho}')
+
+        self.N = N
+        self.M = int(round(np.sqrt(N)))
+        self.rho = rho
+        self.delta = delta
+        self.sigma = sigma
+        self.C = np.zeros((N,N))
+
+        idx_x, idx_y = np.triu_indices(self.N, k=1) #upper triangle indices
+        xv, yv = np.meshgrid(np.arange(self.M),np.arange(self.M))
+        self.X, self.Y = xv.ravel(), yv.ravel()
+        sigmas = np.ones((N,))*self.sigma
+
+        #iterate over upper triangle of connectivity matrix
+        for k in range(idx_x.shape[0]):
+            #get grid coordinates from conn matrix indices
+            i = idx_x[k]; j = idx_y[k]
+            r_i = self.X[i], self.Y[i] #neuron i grid coordinates
+            r_j = self.X[j], self.Y[j] #neuron j grid coordinates
+            dr_ij = self.dist(r_i, r_j, self.M)
+            k_ij = self.kern(dr_ij, sigmas[i])
+            Z = 1 + k_ij**2
+            x = np.random.uniform(0,1)
+            p_ij = k_ij*(1-k_ij)/Z
+            if x <= p_ij:
+                self.C[i,j] = 1
+            elif p_ij < x <= 2*p_ij:
+                self.C[j,i] = 1
+
+    def dist(self, r_i, r_j, M):
+        x1, y1 = r_i; x2, y2 = r_j
+        dx = np.minimum(np.abs(x1-x2),M*self.delta-np.abs(x1-x2))
+        dy = np.minimum(np.abs(y1-y2),M*self.delta-np.abs(y1-y2))
+        dr = np.sqrt(dx**2 + dy**2)
+        return dr
+
+    def kern(self, dr_ij, sigma):
+        a = (self.rho/(sigma*np.sqrt(2*np.pi)))
+        return a*np.exp((-0.5*dr_ij**2)/sigma**2)
+
+    def make_grid(self):
+
+        X = np.arange(0, self.M, self.delta)
+        Y = np.arange(0, self.M, self.delta)
+        self.X, self.Y = np.meshgrid(X, Y)
+        # self.r = np.empty(self.X.shape + (2,))
+        # self.r[:,:,0] = self.X
+        # self.r[:,:,1] = self.Y
+
 class GaussianNetwork:
 
     """
@@ -17,12 +89,15 @@ class GaussianNetwork:
 
     """
 
-    def __init__(self, N, p_e, sigma_e=1, sigma_i=2, delta=1, alpha=10):
+    def __init__(self, N, p_e, sigma_e=1, sigma_i=2, delta=1, rho=10):
+
+        #check rho value
+        print(sigma_e*np.sqrt(2*np.pi)*np.exp(delta**2/2*sigma_e**2))
 
         self.N = N
         self.M = int(round(np.sqrt(N)))
         self.p_e = p_e
-        self.alpha = alpha
+        self.rho = rho
         self.delta = delta
         self.sigma_e = sigma_e
         self.sigma_i = sigma_i
@@ -33,9 +108,9 @@ class GaussianNetwork:
         xv, yv = np.meshgrid(np.arange(self.M),np.arange(self.M))
         X,Y = xv.ravel(), yv.ravel()
 
-        ex_idx = np.random.randint(N, size=int(round((self.p_e*self.N))))
+        self.ex_idx = np.random.randint(N, size=int(round((self.p_e*self.N))))
         sigmas = np.ones((N,))*self.sigma_i
-        sigmas[ex_idx] = self.sigma_e
+        sigmas[self.ex_idx] = self.sigma_e
 
         #iterate over upper triangle of connectivity matrix
         for k in range(idx_x.shape[0]):
@@ -63,7 +138,7 @@ class GaussianNetwork:
         return dr
 
     def kern(self, dr_ij, sigma):
-        a = (self.alpha/sigma*np.sqrt(2*np.pi))
+        a = (self.rho/sigma*np.sqrt(2*np.pi))
         return a*np.exp(-0.5*dr_ij**2/sigma**2)
 
     def make_grid(self):

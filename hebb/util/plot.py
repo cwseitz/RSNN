@@ -40,17 +40,22 @@ def add_activity(ax, spikes, trial=0, color='red'):
 
     ax.plot(np.sum(spikes[:,trial,:], axis=0), color=color)
 
-def add_spectral_graph(ax, Cij, in_idx, arrows=False):
+def add_spectral_graph(ax, net, arrows=False):
 
     if arrows: arrows = True
-    G = nx.convert_matrix.from_numpy_array(Cij, create_using=nx.DiGraph)
+    G = nx.convert_matrix.from_numpy_array(net.C, create_using=nx.DiGraph)
     pos = nx.spectral_layout(G)
     colors = []
     for n in G.nodes():
-        if n in in_idx:
-            colors.append('cornflowerblue')
-        else:
+        try:
+            if n in net.ex_idx:
+                colors.append('red')
+            else:
+                colors.append('cornflowerblue')
+        except:
             colors.append('red')
+
+
     nx.draw_networkx_nodes(G, pos, ax=ax, node_color=colors, node_size=20, node_shape='x')
     nx.draw_networkx_edges(G, pos, ax=ax, edge_color='black', alpha=0.2, arrows=arrows, arrowsize=10)
 

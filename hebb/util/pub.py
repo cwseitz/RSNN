@@ -7,8 +7,6 @@ from hebb.util import *
 def fig_1(net):
 
     custom_lines = [Line2D([0],[0],color='salmon', lw=4),Line2D([0],[0],color='cornflowerblue', lw=4)]
-    net.make_grid()
-    net.pairwise_stats(1, 100, 1, 500, rho_1=0.75, rho_2=0.75)
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 5))
     ax.set_xticks([]); ax.set_yticks([])
@@ -22,21 +20,21 @@ def fig_1(net):
     ax3 = ax.inset_axes([0.6, 0, 0.2, 0.4])
     ax4 = ax.inset_axes([0.9, 0, 0.2, 0.4])
 
-    add_spectral_graph(ax0, net.CIJ, net.in_idx)
+    add_spectral_graph(ax0, net)
 
-    ax1.plot(net.N[5,:], color='purple')
-    ax1.plot(net.N[25,:], color='blue')
-    ax1.plot(net.N[50,:], color='red')
-    ax1.plot(net.N[75,:], color='cyan')
-    ax1.set_xlabel(r'$\mathbf{\Delta}_{ij}$')
-    ax1.set_ylabel(r'$\langle\mathbf{N_{ij}}\rangle$')
-
-    ax2.plot(net.N_var[5,:], color='purple')
-    ax2.plot(net.N_var[25,:], color='blue')
-    ax2.plot(net.N_var[50,:], color='red')
-    ax2.plot(net.N_var[75,:], color='cyan')
-    ax2.set_ylabel(r'$Var\;(\mathbf{N_{ij}})$')
-    ax2.set_xlabel(r'$\mathbf{\Delta}_{ij}$')
+    # ax1.plot(net.N[5,:], color='purple')
+    # ax1.plot(net.N[25,:], color='blue')
+    # ax1.plot(net.N[50,:], color='red')
+    # ax1.plot(net.N[75,:], color='cyan')
+    # ax1.set_xlabel(r'$\mathbf{\Delta}_{ij}$')
+    # ax1.set_ylabel(r'$\langle\mathbf{N_{ij}}\rangle$')
+    #
+    # ax2.plot(net.N_var[5,:], color='purple')
+    # ax2.plot(net.N_var[25,:], color='blue')
+    # ax2.plot(net.N_var[50,:], color='red')
+    # ax2.plot(net.N_var[75,:], color='cyan')
+    # ax2.set_ylabel(r'$Var\;(\mathbf{N_{ij}})$')
+    # ax2.set_xlabel(r'$\mathbf{\Delta}_{ij}$')
     plt.tight_layout()
 
 def fig_2(lif, net, spikes, focal=0):
