@@ -29,50 +29,98 @@ def prod_gauss(mu_1, sigma_1, mu_2, sigma_2):
 
     return mu_3, sigma_3
 
-def dist(r_i, r_j, M, delta):
+def delta_gauss(dx, sigma, delta):
+
+    """
+    Return the value of a gaussian a distance dx from the mean
+    """
+
+    a = (1/(sigma*np.sqrt(2*np.pi)))
+    dx *= delta
+    return a*np.exp((-0.5*dx**2)/sigma**2)
+
+def trinomial(k_ij, k_ji, q):
+
+    """
+    Draw a sample from a trinomial distribution to generate synapses.
+    Inputs k_ij, k_ji, q should be binomial probabilities in [0,1]
+    """
+    p_ij, p_ji, q = _trinomial(k_ij, k_ji, q)
+    x = np.random.uniform(0,1)
+    if x <= p_ij:
+        out = -1
+    elif p_ij < x <= p_ij+p_ji:
+        out = 1
+    elif x > p_ij+p_ji:
+        out = 0
+    return out
+
+def _trinomial(k_ij, k_ji, q):
+
+    p_ij = k_ij*(1-k_ji)*(1-q)
+    p_ji = k_ji*(1-k_ij)*(1-q)
+    p_x = q*(1-k_ij)*(1-k_ji)
+    z_ij = p_ij + p_ji + p_x
+    p_ij /= z_ij; p_ji /= z_ij; p_x /= z_ij
+
+    return p_ij, p_ji, q
+
+
+def torus_dist(r_i, r_j, M, delta):
+
+    """
+    Evaluate the Euclidean distance between two points on a discrete
+    torus (a 2D lattice with periodic boundary conditions)
+    """
+
     x1, y1 = r_i; x2, y2 = r_j
     dx = np.minimum(np.abs(x1-x2),M*delta-np.abs(x1-x2))
     dy = np.minimum(np.abs(y1-y2),M*delta-np.abs(y1-y2))
     dr = np.sqrt(dx**2 + dy**2)
     return dr
 
-def hogn_avg_out_deg(N, sigma, rho, delta, x0=0, y0=0):
+def entropy(p):
 
     """
-    Average out degree of a homogeneous gaussian network
+    Compute the entropy of a probability distribution p
     """
 
-    M = int(round(np.sqrt(N)))
-    grid = np.zeros((M,M))
+    return np.sum(p*np.log2(1/p))
 
-    for x in range(M):
-        for y in range(M):
-            if x != x0 or y != y0:
-                a = rho/(np.sqrt(2*np.pi)*sigma)
-                dr_ij = dist((x0,y0), (x,y), M, delta)
-                k_ij = a*np.exp(-0.5*(dr_ij**2)/(sigma**2))
-                z_ij = 2*k_ij + (1-k_ij)**2
-                grid[x,y] = k_ij/z_ij
-
-    return grid
-
-def hogn_var_out_deg(N, sigma, rho, delta, x0=0, y0=0):
+def hogn_avg_out_deg(N, sigma, boost, q, delta, x0=0, y0=0):
 
     """
-    Variance in the out degree of a homogeneous gaussian network
+    Average out degree of a homogeneous gaussian network for a given
+    value of sigma and boost params
     """
 
     M = int(round(np.sqrt(N)))
-    grid = np.zeros((M,M))
+    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
+    X, Y = xv.ravel(), yv.ravel()
+    dr_ij_vec = np.array([torus_dist((0,0),(X[i],Y[i]),M,delta) for i in range(N)])[1:]
+    p_vec = np.zeros_like(dr_ij_vec)
+    for i, dr_ij in enumerate(dr_ij_vec):
+        k_ij = boost*delta_gauss(dr_ij, sigma, delta)
+        p_ij, p_ji, q  = _trinomial(k_ij, k_ij, q)
+        p_vec[i] = p_ij
 
-    for x in range(M):
-        for y in range(M):
-            if x != x0 or y != y0:
-                a = rho/(np.sqrt(2*np.pi)*sigma)
-                dr_ij = dist((x0,y0), (x,y), M, delta)
-                k_ij = a*np.exp(-0.5*(dr_ij**2)/(sigma**2))
-                z_ij = 2*k_ij + (1-k_ij)**2
-                p_ij = k_ij/z_ij
-                grid[x,y] = p_ij*(1-p_ij)
+    return np.sum(p_vec)
 
-    return grid
+def hogn_var_out_deg(N, sigma, boost, q, delta, x0=0, y0=0):
+
+    """
+    Average out degree of a homogeneous gaussian network for a given
+    value of sigma and boost params
+    """
+
+    M = int(round(np.sqrt(N)))
+    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
+    X, Y = xv.ravel(), yv.ravel()
+    dr_ij_vec = np.array([torus_dist((0,0),(X[i],Y[i]),M,delta) for i in range(N)])[1:]
+    p_vec = np.zeros_like(dr_ij_vec)
+    for i, dr_ij in enumerate(dr_ij_vec):
+        k_ij = boost*delta_gauss(dr_ij, sigma, delta)
+        p_ij, p_ji, q  = _trinomial(k_ij, k_ij, q)
+        p_vec[i] = p_ij*(1-p_ij)
+
+    return np.sum(p_vec)

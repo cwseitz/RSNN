@@ -12,13 +12,13 @@ class HOGN:
 
     """
     This function generates a homogeneous gaussian.
-    The lattice axial dimension should be M = np.sqrt(N)
+    The lattice dimension should be M = np.sqrt(N)
 
     Generates a connectivity matrix Cij in O(n^2) time
 
     """
 
-    def __init__(self, N, sigma=5, delta=1, rho=1):
+    def __init__(self, N, sigma=3, delta=1, q=0.8):
 
         #check sigma value to ensure reasonable connection probabilities
         # min_sig = 5
@@ -26,14 +26,13 @@ class HOGN:
         #      raise ValueError(f'Sigma value is below the minimum value {min_sig}')
 
         #check rho value
-        max_rho = sigma*np.sqrt(2*np.pi)*np.exp(delta**2/(2*sigma**2))
-        print(f'Maximum rho value: {max_rho}')
-        if rho > max_rho:
-             raise ValueError(f'Rho value is beyond the maximum value {max_rho}')
+        # max_rho = sigma*np.sqrt(2*np.pi)*np.exp(delta**2/(2*sigma**2))
+        # print(f'Maximum rho value: {max_rho}')
+        # if rho > max_rho:
+        #      raise ValueError(f'Rho value is beyond the maximum value {max_rho}')
 
         self.N = N
         self.M = int(round(np.sqrt(N)))
-        self.rho = rho
         self.delta = delta
         self.sigma = sigma
         self.C = np.zeros((N,N))
@@ -49,35 +48,13 @@ class HOGN:
             i = idx_x[k]; j = idx_y[k]
             r_i = self.X[i], self.Y[i] #neuron i grid coordinates
             r_j = self.X[j], self.Y[j] #neuron j grid coordinates
-            dr_ij = self.dist(r_i, r_j, self.M)
-            k_ij = self.kern(dr_ij, sigmas[i])
-            z_ij= 2*k_ij + (1-k_ij)*(1-k_ij)
-            x = np.random.uniform(0,1)
-            p_ij = k_ij/z_ij
-            if x <= p_ij:
+            dr_ij = torus_dist(r_i, r_j, self.M, delta=self.delta)
+            k_ij = delta_gauss(dr_ij, sigmas[i], self.delta)
+            syn = trinomial(k_ij, k_ij, q)
+            if syn == 1:
                 self.C[i,j] = 1
-            elif p_ij < x <= 2*p_ij:
+            elif syn == -1:
                 self.C[j,i] = 1
-
-    def dist(self, r_i, r_j, M):
-        x1, y1 = r_i; x2, y2 = r_j
-        dx = np.minimum(np.abs(x1-x2),M*self.delta-np.abs(x1-x2))
-        dy = np.minimum(np.abs(y1-y2),M*self.delta-np.abs(y1-y2))
-        dr = np.sqrt(dx**2 + dy**2)
-        return dr
-
-    def kern(self, dr_ij, sigma):
-        a = (self.rho/(sigma*np.sqrt(2*np.pi)))
-        return a*np.exp((-0.5*dr_ij**2)/sigma**2)
-
-    def make_grid(self):
-
-        X = np.arange(0, self.M, self.delta)
-        Y = np.arange(0, self.M, self.delta)
-        self.X, self.Y = np.meshgrid(X, Y)
-        # self.r = np.empty(self.X.shape + (2,))
-        # self.r[:,:,0] = self.X
-        # self.r[:,:,1] = self.Y
 
 class GaussianNetwork:
 
