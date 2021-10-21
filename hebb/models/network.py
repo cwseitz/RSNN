@@ -8,17 +8,28 @@ from networkx.generators.random_graphs import erdos_renyi_graph
 from hebb.util import *
 
 
-class HOGN:
+class GaussianNetwork:
 
     """
-    This function generates a homogeneous gaussian.
-    The lattice dimension should be M = np.sqrt(N)
+    This function generates a gaussian network from parameter maps
+    over a 2D lattice. Generates a connectivity matrix Cij in O(n^2) time
 
-    Generates a connectivity matrix Cij in O(n^2) time
+    Parameters
+    ----------
+    N : int
+        Total number of units in the network
+    sigma : 2D ndarray
+        Reach parameter for every neuron
+    bias_ij : 2D ndarray
+        Bias for connection direction i->j
+    bias_ji : 2D ndarray
+        Bias for connection direction j->i
+    q : 2D ndarray
+        Binomial probability of no synapse
 
     """
 
-    def __init__(self, N, sigma=3, delta=1, q=0.8):
+    def __init__(self, N, sigma, bias_ij, bias_ji, q, delta=1):
 
         #check sigma value to ensure reasonable connection probabilities
         # min_sig = 5
@@ -35,12 +46,14 @@ class HOGN:
         self.M = int(round(np.sqrt(N)))
         self.delta = delta
         self.sigma = sigma
+        self.bias_ij = bias_ij
+        self.bias_ji = bias_ji
+        self.q = q
         self.C = np.zeros((N,N))
 
         idx_x, idx_y = np.triu_indices(self.N, k=1) #upper triangle indices
         xv, yv = np.meshgrid(np.arange(self.M),np.arange(self.M))
         self.X, self.Y = xv.ravel(), yv.ravel()
-        sigmas = np.ones((N,))*self.sigma
 
         #iterate over upper triangle of connectivity matrix
         for k in range(idx_x.shape[0]):
@@ -49,83 +62,13 @@ class HOGN:
             r_i = self.X[i], self.Y[i] #neuron i grid coordinates
             r_j = self.X[j], self.Y[j] #neuron j grid coordinates
             dr_ij = torus_dist(r_i, r_j, self.M, delta=self.delta)
-            k_ij = delta_gauss(dr_ij, sigmas[i], self.delta)
-            syn = trinomial(k_ij, k_ij, q)
+            k_ij = self.bias_ij[r_i]*delta_gauss(dr_ij, self.sigma[r_i], self.delta)
+            k_ji = self.bias_ij[r_i]*delta_gauss(dr_ij, self.sigma[r_j], self.delta)
+            syn = trinomial(k_ij, k_ij, self.q)
             if syn == 1:
                 self.C[i,j] = 1
             elif syn == -1:
                 self.C[j,i] = 1
-
-class GaussianNetwork:
-
-    """
-    This function generates a directed network where connection probabilities
-    are a function of space. The lattice axial dimension should be M = np.sqrt(N)
-
-    Generates a connectivity matrix Cij in O(n^2) time
-
-    """
-
-    def __init__(self, N, p_e, sigma_e=1, sigma_i=2, delta=1, rho=10):
-
-        #check rho value
-        print(sigma_e*np.sqrt(2*np.pi)*np.exp(delta**2/2*sigma_e**2))
-
-        self.N = N
-        self.M = int(round(np.sqrt(N)))
-        self.p_e = p_e
-        self.rho = rho
-        self.delta = delta
-        self.sigma_e = sigma_e
-        self.sigma_i = sigma_i
-        self.C = np.zeros((N,N))
-        self.make_grid()
-
-        idx_x, idx_y = np.triu_indices(self.N, k=1) #upper triangle indices
-        xv, yv = np.meshgrid(np.arange(self.M),np.arange(self.M))
-        X,Y = xv.ravel(), yv.ravel()
-
-        self.ex_idx = np.random.randint(N, size=int(round((self.p_e*self.N))))
-        sigmas = np.ones((N,))*self.sigma_i
-        sigmas[self.ex_idx] = self.sigma_e
-
-        #iterate over upper triangle of connectivity matrix
-        for k in range(idx_x.shape[0]):
-            #get grid coordinates from conn matrix indices
-            i = idx_x[k]; j = idx_y[k]
-            r_i = X[i], Y[i] #neuron i grid coordinates
-            r_j = X[j], Y[j] #neuron j grid coordinates
-            dr_ij = self.dist(r_i, r_j, self.M)
-            k_ij = self.kern(dr_ij, sigmas[i])
-            k_ji = self.kern(dr_ij, sigmas[j])
-            Z = k_ij*(1-k_ji) + k_ji*(1-k_ij) + (1-k_ij)*(1-k_ji)
-            x = np.random.uniform(0,1)
-            p_ij = k_ij*(1-k_ji)/Z
-            p_ji = k_ji*(1-k_ij)/Z
-            if x <= p_ij:
-                self.C[i,j] = 1
-            elif p_ij < x <= p_ij+p_ji:
-                self.C[j,i] = 1
-
-    def dist(self, r_i, r_j, M):
-        x1, y1 = r_i; x2, y2 = r_j
-        dx = np.minimum(np.abs(x1-x2),M-np.abs(x1-x2))
-        dy = np.minimum(np.abs(y1-y2),M-np.abs(y1-y2))
-        dr = np.sqrt(dx**2 + dy**2)
-        return dr
-
-    def kern(self, dr_ij, sigma):
-        a = (self.rho/sigma*np.sqrt(2*np.pi))
-        return a*np.exp(-0.5*dr_ij**2/sigma**2)
-
-    def make_grid(self):
-
-        X = np.arange(0, self.M, self.delta)
-        Y = np.arange(0, self.M, self.delta)
-        self.X, self.Y = np.meshgrid(X, Y)
-        self.r = np.empty(self.X.shape + (2,))
-        self.r[:,:,0] = self.X
-        self.r[:,:,1] = self.Y
 
 class FractalNetwork:
 

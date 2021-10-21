@@ -13,27 +13,145 @@ def fig_1():
     Generate a homogeneous gaussian network and plot the graph in spectral format
     """
 
-    N = 525
-    net = HOGN(N, q=0.3)
-
+    N = 100
+    M = int(round(np.sqrt(N)))
+    #Define parameter maps
+    q = 0.1; sigma = 5*np.ones((M,M))
+    bias_ij = bias_ji = np.ones((M,M))
+    net = GaussianNetwork(N, sigma, bias_ij, bias_ji, q)
     custom_lines = [Line2D([0],[0],color='salmon', lw=4),Line2D([0],[0],color='cornflowerblue', lw=4)]
 
-    fig, ax = plt.subplots(1, 1, figsize=(10, 5))
+    fig, ax_ = plt.subplots(1, 1, figsize=(7,4))
+    ax_.set_xticks([]); ax_.set_yticks([])
+    ax_.spines['right'].set_visible(False)
+    ax_.spines['top'].set_visible(False)
+    ax_.spines['left'].set_visible(False)
+    ax_.spines['bottom'].set_visible(False)
+    ax0 = ax_.inset_axes([0, 0, 0.45, 0.85])
+    ax1 = ax_.inset_axes([0.6, 0.55, 0.2, 0.3])
+    ax2 = ax_.inset_axes([0.9, 0.55, 0.2, 0.3])
+    ax3 = ax_.inset_axes([0.6, 0, 0.2, 0.3])
+    ax4 = ax_.inset_axes([0.9, 0, 0.2, 0.3])
+
+    add_spring_graph(ax0, net, alpha=0.03)
+    add_ego_graph(ax1, net)
+
+    """
+    Generate a map of mean out degree over the 2D parameter space
+    """
+
+    sigmas = np.linspace(np.sqrt(N)/16, np.sqrt(N)/2, 100)
+    qs = np.linspace(0,1,100)
+    avg_arr, var_arr = hom_out_deg_full(N, sigmas, qs)
+    ax2.imshow(avg_arr, cmap='coolwarm', origin='lower')
+    ax2.set_xlabel(r'$\sigma$')
+    ax2.set_xticks([0,100])
+    ax2.set_xticklabels([r'$\sqrt{N}/16$',r'$\sqrt{N}/2$'])
+    ax2.set_yticks([0,100])
+    ax2.set_yticklabels([0,1])
+    ax2.set_ylabel(r'$q$')
+
+    ax3.set_title(r'$\sigma=\sqrt{N}/8$')
+    ax4.set_title(r'$\sigma=\sqrt{N}/2$')
+
+    """
+    Plot mean out degree as a function of sparsity parameter with fixed sigma
+    """
+
+    w = 20
+    qs = np.linspace(0.1,1,w)
+    ax = [ax3,ax4]
+    sigmas = np.array([np.sqrt(N)/8,np.sqrt(N)/2])
+    for i, sigma in enumerate(sigmas):
+        avg_arr, var_arr = hom_out_deg_fixsig(N, sigma, qs)
+        ax[i].plot(qs, avg_arr/N, color='blue')
+        ax[i].set_xlabel(r'$q$')
+        ax[i].set_ylabel(r'$\langle N_{ij} \rangle/N$')
+
+    plt.tight_layout()
+
+def fig_2():
+
+
+    """
+    Generate a heterogeneous gaussian network and plot the graph in spectral format
+    """
+
+    N = 100
+    M = int(round(np.sqrt(N)))
+    #Define parameter maps
+    q = 0.1; sigma = 5*np.ones((M,M))
+    bias_ij = bias_ji = np.ones((M,M))
+    net = GaussianNetwork(N, sigma, bias_ij, bias_ji, q)
+    custom_lines = [Line2D([0],[0],color='salmon', lw=4),Line2D([0],[0],color='cornflowerblue', lw=4)]
+
+    fig, ax = plt.subplots(1, 1, figsize=(12, 4))
     ax.set_xticks([]); ax.set_yticks([])
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.spines['left'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
     ax0 = ax.inset_axes([0, 0, 0.5, 1.0])
-    ax1 = ax.inset_axes([0.6, 0.55, 0.2, 0.4])
-    ax2 = ax.inset_axes([0.9, 0.55, 0.2, 0.4])
-    ax3 = ax.inset_axes([0.6, 0, 0.2, 0.4])
-    ax4 = ax.inset_axes([0.9, 0, 0.2, 0.4])
+    ax1 = ax.inset_axes([0.65, 0.55, 0.2, 0.4])
+    ax2 = ax.inset_axes([1.05, 0.55, 0.2, 0.4])
+    ax3 = ax.inset_axes([1.45, 0.55, 0.2, 0.4])
+    ax4 = ax.inset_axes([0.65, 0, 0.2, 0.4])
+    ax5 = ax.inset_axes([1.05, 0, 0.2, 0.4])
+    ax6 = ax.inset_axes([1.45, 0, 0.2, 0.4])
 
     add_spring_graph(ax0, net)
+
+    """
+    Fix the sparsity parameter and get mean out_deg as a function of bias for a few sigma
+    """
+
+    sigmas = np.array([np.sqrt(N)/4,np.sqrt(N)/1, np.sqrt(N)])
+    avg_arr, var_arr = out_deg_iters_fixq(N, sigmas, q)
+
+    ax1.plot(avg_arr[0,:]/N, color='red')
+    ax1.set_xlabel(r'$\gamma$')
+    ax1.set_xticks([0,avg_arr.shape[1]])
+    ax1.set_xticklabels([0,r'$\gamma_{max}$'])
+    ax1.set_ylabel(r'$\langle N_{ij} \rangle/N$')
+    ax1.set_title(r'$\sigma=\sqrt{N}/4$')
+    ax1.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+
+    ax2.plot(avg_arr[1,:]/N, color='red')
+    ax2.set_xlabel(r'$\gamma$')
+    ax2.set_xticks([0,avg_arr.shape[1]])
+    ax2.set_xticklabels([0,r'$\gamma_{max}$'])
+    ax2.set_ylabel(r'$\langle N_{ij} \rangle/N$')
+    ax2.set_title(r'$\sigma=\sqrt{N}/2$')
+    ax2.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+
+    ax3.plot(avg_arr[2,:]/N, color='red')
+    ax3.set_ylabel(r'$\langle N_{ij} \rangle/N$')
+    ax3.set_xlabel(r'$\gamma$')
+    ax3.set_xticks([0,avg_arr.shape[1]])
+    ax3.set_xticklabels([0,r'$\gamma_{max}$'])
+    ax3.set_title(r'$\sigma=\sqrt{N}/1$')
+    ax3.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+
+    """
+    Generate parameter maps of (q, bias) with fixed sigma
+    """
+
+    w = 20
+    qs = np.linspace(0.1,1,w)
+    ax = [ax4,ax5,ax6]
+    for i, sigma in enumerate(sigmas):
+        avg_arr, var_arr = het_out_deg_fixsig(N, sigma, qs, n_bias=w)
+        ax[i].imshow(avg_arr, origin='lower', cmap='coolwarm')
+        ax[i].set_xticks([0,w])
+        ax[i].set_ylabel(r'$q$')
+        ax[i].set_yticklabels([0,1])
+        ax[i].set_yticks([0,w])
+        ax[i].set_xticklabels([1, r'$\gamma_{max}$'])
+        ax[i].set_xlabel(r'$\gamma$')
+
     plt.tight_layout()
 
-def fig_2(lif, net, spikes, focal=0):
+def fig_3(lif, net, spikes, focal=0):
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 10))
     ax.set_xticks([]); ax.set_yticks([])
@@ -54,47 +172,8 @@ def fig_2(lif, net, spikes, focal=0):
     add_unit_voltage(ax3, lif, unit=focal)
     add_unit_current(ax4, lif, unit=focal)
     add_unit_spikes(ax5, lif, unit=lif.no_clamp_idx[focal])
+
     plt.tight_layout()
-
-def fig_3():
-
-    #Generate several homogeneous Gaussian networks to examine statistics
-    N = 525
-    M = np.sqrt(N)
-    q = 0.2
-    sigmas = np.array([1, M/2, np.sqrt(2)*M])
-    delta = 1
-
-    fig, ax = plt.subplots(1,3, figsize=(8,2.25))
-
-    for i in range(sigmas.shape[0]):
-        max_boost = sigmas[i]*np.sqrt(2*np.pi)*np.exp(delta**2/(2*sigmas[i]**2))
-        boost = np.linspace(1, max_boost, 100)
-        avg_arr = []; var_arr = []
-        for j in range(boost.shape[0]):
-            avg_grid = hogn_avg_out_deg(N, sigmas[i], boost[j], delta, q)
-            var_grid = hogn_var_out_deg(N, sigmas[i], boost[j], delta, q)
-            avg_arr.append(np.sum(avg_grid)/N)
-            var_arr.append(np.sqrt(np.sum(var_grid))/N)
-        ax[i].plot(boost, avg_arr, color='red')
-        ax2 = ax[i].twinx()
-        ax2.plot(boost, np.sqrt(var_arr), color='blue')
-        ax2.set_ylabel(r'$\sqrt{\mathrm{Var}(N_{ij})}$', color='blue')
-        ax2.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
-        ax[i].yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
-
-    ax[0].set_title(r'$\sigma=1$')
-    ax[0].set_xlabel(r'$\rho$')
-    ax[0].set_ylabel(r'$\langle N_{ij} \rangle/N$', color='red')
-    ax[1].set_title(r'$\sigma=\sqrt{N}/2$')
-    ax[1].set_xlabel(r'$\rho$')
-    ax[1].set_ylabel(r'$\langle N_{ij} \rangle/N$', color='red')
-    ax[2].set_title(r'$\sigma=\sqrt{2N}$')
-    ax[2].set_ylabel(r'$\langle N_{ij} \rangle/N$', color='red')
-    ax[2].set_xlabel(r'$\rho$')
-    plt.tight_layout()
-    plt.show()
-
 
 # def fig_4(N):
 #

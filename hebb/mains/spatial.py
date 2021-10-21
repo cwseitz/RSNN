@@ -13,5 +13,8 @@ from hebb.models import *
 ## Email: cwseitz@uchicago.edu
 ##################################################
 
-fig_3()
+#Homogeneous Gaussian Network
+
+
+fig_1()
 plt.show()

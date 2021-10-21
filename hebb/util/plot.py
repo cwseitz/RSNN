@@ -2,7 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import networkx as nx
 import matplotlib as mpl
+import matplotlib.gridspec as gridspec
 from matplotlib import cm
+from operator import itemgetter
 
 def plt2array(fig):
     fig.canvas.draw()
@@ -40,7 +42,22 @@ def add_activity(ax, spikes, trial=0, color='red'):
 
     ax.plot(np.sum(spikes[:,trial,:], axis=0), color=color)
 
-def add_spectral_graph(ax, net, arrows=False):
+def add_ego_graph(ax, net, alpha=0.5):
+
+    G = nx.convert_matrix.from_numpy_array(net.C, create_using=nx.DiGraph)
+    node_and_degree = G.degree()
+    (largest_hub, degree) = sorted(node_and_degree, key=itemgetter(1))[-1]
+    neighbors = list(G.neighbors(largest_hub))
+    G = nx.Graph()
+    hub = len(neighbors)+1
+    G.add_node(hub)
+    for neighbor in neighbors:
+        G.add_node(neighbor)
+        G.add_edge(neighbor, hub)
+    pos = nx.spring_layout(G)
+    nx.draw(G, pos, ax=ax, alpha=alpha, node_color="b", node_size=20, with_labels=False)
+
+def add_spectral_graph(ax, net, alpha=0.05, arrows=False):
 
     if arrows: arrows = True
     G = nx.convert_matrix.from_numpy_array(net.C, create_using=nx.DiGraph)
@@ -57,9 +74,9 @@ def add_spectral_graph(ax, net, arrows=False):
 
 
     nx.draw_networkx_nodes(G, pos, ax=ax, node_color=colors, node_size=20, node_shape='x')
-    nx.draw_networkx_edges(G, pos, ax=ax, edge_color='black', alpha=0.2, arrows=arrows, arrowsize=10)
+    nx.draw_networkx_edges(G, pos, ax=ax, edge_color='black', alpha=alpha, arrows=arrows, arrowsize=10)
 
-def add_spring_graph(ax, net, arrows=False):
+def add_spring_graph(ax, net, alpha=0.05, arrows=False):
 
     if arrows: arrows = True
     G = nx.convert_matrix.from_numpy_array(net.C, create_using=nx.DiGraph)
@@ -76,7 +93,7 @@ def add_spring_graph(ax, net, arrows=False):
 
 
     nx.draw_networkx_nodes(G, pos, ax=ax, node_color=colors, node_size=20, node_shape='x')
-    nx.draw_networkx_edges(G, pos, ax=ax, edge_color='black', alpha=0.2, arrows=arrows, arrowsize=10)
+    nx.draw_networkx_edges(G, pos, ax=ax, edge_color='black', alpha=alpha, arrows=arrows, arrowsize=10)
 
 def add_unit_voltage(ax, cell, unit=0, trial=0):
 

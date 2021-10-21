@@ -35,9 +35,9 @@ def delta_gauss(dx, sigma, delta):
     Return the value of a gaussian a distance dx from the mean
     """
 
-    a = (1/(sigma*np.sqrt(2*np.pi)))
+    # a = (1/(sigma*np.sqrt(2*np.pi)))
     dx *= delta
-    return a*np.exp((-0.5*dx**2)/sigma**2)
+    return np.exp((-0.5*dx**2)/sigma**2)
 
 def trinomial(k_ij, k_ji, q):
 
@@ -91,7 +91,7 @@ def hogn_avg_out_deg(N, sigma, boost, q, delta, x0=0, y0=0):
 
     """
     Average out degree of a homogeneous gaussian network for a given
-    value of sigma and boost params
+    value of sigma, bias, and q params
     """
 
     M = int(round(np.sqrt(N)))
@@ -103,7 +103,6 @@ def hogn_avg_out_deg(N, sigma, boost, q, delta, x0=0, y0=0):
         k_ij = boost*delta_gauss(dr_ij, sigma, delta)
         p_ij, p_ji, q  = _trinomial(k_ij, k_ij, q)
         p_vec[i] = p_ij
-
     return np.sum(p_vec)
 
 def hogn_var_out_deg(N, sigma, boost, q, delta, x0=0, y0=0):
@@ -124,3 +123,72 @@ def hogn_var_out_deg(N, sigma, boost, q, delta, x0=0, y0=0):
         p_vec[i] = p_ij*(1-p_ij)
 
     return np.sum(p_vec)
+
+def hom_out_deg_fixsig(N, sigma, qs, bias=1, delta=1):
+
+    """
+    First two moments of the out the degree distribution for fixed
+    sigma, varying the bias and sparsity parameters
+
+    Will compute suitable values for the bias parameter based on sigma.
+    """
+
+    avg_arr = np.zeros((len(qs),))
+    var_arr = np.zeros((len(qs),))
+    for i,q in enumerate(qs):
+        avg_arr[i] = hogn_avg_out_deg(N, sigma, bias, q, delta)
+        var_arr[i] = hogn_var_out_deg(N, sigma, bias, q, delta)
+    return avg_arr, var_arr
+
+def hom_out_deg_full(N, sigmas, qs, bias=1, delta=1):
+
+    """
+    Mean of the out the degree distribution over the entire parameter space
+    for the homogeneous gaussian network (sigma, q)
+    """
+
+    avg_arr = np.zeros((len(qs),len(sigmas)))
+    var_arr = np.zeros((len(qs),len(sigmas)))
+    for i,q in enumerate(qs):
+        for j, sigma in enumerate(sigmas):
+            avg_arr[i,j] = hogn_avg_out_deg(N, sigma, bias, q, delta)
+            var_arr[i,j] = hogn_var_out_deg(N, sigma, bias, q, delta)
+    return avg_arr, var_arr
+
+def het_out_deg_fixsig(N, sigma, qs, n_bias=100, delta=1):
+
+    """
+    First two moments of the out the degree distribution for fixed
+    sigma, varying the bias and sparsity parameters
+
+    Will compute suitable values for the bias parameter based on sigma
+
+    """
+
+    avg_arr = np.zeros((len(qs),n_bias))
+    max_bias = sigma*np.sqrt(2*np.pi)*np.exp(delta**2/(2*sigma**2))
+    biases = np.linspace(1, max_bias-1, n_bias)
+    var_arr = np.zeros((len(qs),n_bias))
+    for i,q in enumerate(qs):
+        for j,bias in enumerate(biases):
+            avg_arr[i,j] = hogn_avg_out_deg(N, sigma, bias, q, delta)
+            var_arr[i,j] = hogn_var_out_deg(N, sigma, bias, q, delta)
+    return avg_arr, var_arr
+
+
+def out_deg_iters_fixq(N, sigmas, q, delta=1, n_bias=100):
+
+    """
+    First two moments of the out degree distribution for fixed
+    sparsity parameter, varying the bias and reach (sigma) parameters
+    """
+
+    avg_arr = np.zeros((len(sigmas),n_bias))
+    var_arr = np.zeros((len(sigmas),n_bias))
+    for i,sigma in enumerate(sigmas):
+        max_boost = sigma*np.sqrt(2*np.pi)*np.exp(delta**2/(2*sigma**2))
+        boosts = np.linspace(1, max_boost, n_bias)
+        for j,boost in enumerate(boosts):
+            avg_arr[i,j] = hogn_avg_out_deg(N, sigma, boost, q, delta)
+            var_arr[i,j] = hogn_var_out_deg(N, sigma, boost, q, delta)
+    return avg_arr, var_arr
