@@ -46,16 +46,21 @@ def add_ego_graph(ax, net, alpha=0.5):
 
     G = nx.convert_matrix.from_numpy_array(net.C, create_using=nx.DiGraph)
     node_and_degree = G.degree()
-    (largest_hub, degree) = sorted(node_and_degree, key=itemgetter(1))[-1]
-    neighbors = list(G.neighbors(largest_hub))
+    (hub, degree) = sorted(node_and_degree, key=itemgetter(1))[-1]
+    inedges = G.in_edges(hub)
+    outedges = G.out_edges(hub)
     G = nx.Graph()
-    hub = len(neighbors)+1
     G.add_node(hub)
-    for neighbor in neighbors:
-        G.add_node(neighbor)
-        G.add_edge(neighbor, hub)
+    for neighbor in inedges:
+        G.add_node(neighbor[0])
+        G.add_edge(*neighbor, color='salmon')
+    for neighbor in outedges:
+        G.add_node(neighbor[1])
+        G.add_edge(*neighbor, color='cornflowerblue')
     pos = nx.spring_layout(G)
-    nx.draw(G, pos, ax=ax, alpha=alpha, node_color="b", node_size=20, with_labels=False)
+    edges = G.edges()
+    colors = [G[u][v]['color'] for u,v in edges]
+    nx.draw(G, pos, ax=ax, alpha=alpha, node_color='black', edge_color=colors, node_size=20, with_labels=False)
 
 def add_spectral_graph(ax, net, alpha=0.05, arrows=False):
 
@@ -64,14 +69,10 @@ def add_spectral_graph(ax, net, alpha=0.05, arrows=False):
     pos = nx.spectral_layout(G)
     colors = []
     for n in G.nodes():
-        try:
-            if n in net.ex_idx:
-                colors.append('red')
-            else:
-                colors.append('cornflowerblue')
-        except:
+        if n in net.ex_idx:
             colors.append('red')
-
+        else:
+            colors.append('cornflowerblue')
 
     nx.draw_networkx_nodes(G, pos, ax=ax, node_color=colors, node_size=20, node_shape='x')
     nx.draw_networkx_edges(G, pos, ax=ax, edge_color='black', alpha=alpha, arrows=arrows, arrowsize=10)

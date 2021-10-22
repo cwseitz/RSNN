@@ -124,7 +124,7 @@ def hogn_var_out_deg(N, sigma, boost, q, delta, x0=0, y0=0):
 
     return np.sum(p_vec)
 
-def hom_out_deg_fixsig(N, sigma, qs, bias=1, delta=1):
+def hogn_out_deg_fixsig(N, sigma, qs, bias=1, delta=1):
 
     """
     First two moments of the out the degree distribution for fixed
@@ -140,7 +140,22 @@ def hom_out_deg_fixsig(N, sigma, qs, bias=1, delta=1):
         var_arr[i] = hogn_var_out_deg(N, sigma, bias, q, delta)
     return avg_arr, var_arr
 
-def hom_out_deg_full(N, sigmas, qs, bias=1, delta=1):
+def hogn_out_deg_fixq(N, sigmas, q, bias=1, delta=1):
+
+    """
+    First two moments of the out degree distribution for fixed
+    sparsity parameter, varying the reach (sigma) parameter
+    """
+
+    avg_arr = np.zeros((len(sigmas),))
+    var_arr = np.zeros((len(sigmas),))
+    for i,sigma in enumerate(sigmas):
+        avg_arr[i] = hogn_avg_out_deg(N, sigma, bias, q, delta)
+        var_arr[i] = hogn_var_out_deg(N, sigma, bias, q, delta)
+    return avg_arr, var_arr
+
+
+def hogn_out_deg_full(N, sigmas, qs, bias=1, delta=1):
 
     """
     Mean of the out the degree distribution over the entire parameter space
@@ -155,40 +170,58 @@ def hom_out_deg_full(N, sigmas, qs, bias=1, delta=1):
             var_arr[i,j] = hogn_var_out_deg(N, sigma, bias, q, delta)
     return avg_arr, var_arr
 
-def het_out_deg_fixsig(N, sigma, qs, n_bias=100, delta=1):
+def exin_avg_e_in_deg(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e, delta=1):
 
     """
-    First two moments of the out the degree distribution for fixed
-    sigma, varying the bias and sparsity parameters
-
-    Will compute suitable values for the bias parameter based on sigma
-
+    Average number of excitatory connections and inhibitory connections coming
+    into an excitatory neuron
     """
 
-    avg_arr = np.zeros((len(qs),n_bias))
-    max_bias = sigma*np.sqrt(2*np.pi)*np.exp(delta**2/(2*sigma**2))
-    biases = np.linspace(1, max_bias-1, n_bias)
-    var_arr = np.zeros((len(qs),n_bias))
-    for i,q in enumerate(qs):
-        for j,bias in enumerate(biases):
-            avg_arr[i,j] = hogn_avg_out_deg(N, sigma, bias, q, delta)
-            var_arr[i,j] = hogn_var_out_deg(N, sigma, bias, q, delta)
-    return avg_arr, var_arr
+    M = int(round(np.sqrt(N)))
+    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
+    X, Y = xv.ravel(), yv.ravel()
+    dr_ij_vec = np.array([torus_dist((0,0),(X[i],Y[i]),M,delta) for i in range(N)])[1:]
+    p_vec_ex = np.zeros_like(dr_ij_vec)
+    p_vec_inh = np.zeros_like(dr_ij_vec)
 
+    for i, dr_ij in enumerate(dr_ij_vec):
+        k_ij = bias_e*delta_gauss(dr_ij, sigma_e, delta) #doesn't depend on postsynaptic cell-type
+        k_ji_ex = p_e*bias_e*delta_gauss(dr_ij, sigma_e, delta) #incoming connection to an excitatory neuron
+        k_ji_inh = (1-p_e)*bias_i*delta_gauss(dr_ij, sigma_i, delta) #incoming connection to an inhibitory neuron
+        p_ij_ex, p_ji_ex, q  = _trinomial(k_ij, k_ji_ex, q)
+        p_ij_inh, p_ji_inh, q  = _trinomial(k_ij, k_ji_inh, q)
+        p_vec_ex[i] = p_ji_ex
+        p_vec_inh[i] = p_ji_inh
 
-def out_deg_iters_fixq(N, sigmas, q, delta=1, n_bias=100):
+    avg_in_ex = np.sum(p_vec_ex)
+    avg_in_inh = np.sum(p_vec_inh)
+
+    return avg_in_ex, avg_in_inh
+
+def exin_avg_i_in_deg(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e, delta=1):
 
     """
-    First two moments of the out degree distribution for fixed
-    sparsity parameter, varying the bias and reach (sigma) parameters
+    Average number of excitatory connections and inhibitory connections coming
+    into an inhibitory neuron
     """
 
-    avg_arr = np.zeros((len(sigmas),n_bias))
-    var_arr = np.zeros((len(sigmas),n_bias))
-    for i,sigma in enumerate(sigmas):
-        max_boost = sigma*np.sqrt(2*np.pi)*np.exp(delta**2/(2*sigma**2))
-        boosts = np.linspace(1, max_boost, n_bias)
-        for j,boost in enumerate(boosts):
-            avg_arr[i,j] = hogn_avg_out_deg(N, sigma, boost, q, delta)
-            var_arr[i,j] = hogn_var_out_deg(N, sigma, boost, q, delta)
-    return avg_arr, var_arr
+    M = int(round(np.sqrt(N)))
+    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
+    X, Y = xv.ravel(), yv.ravel()
+    dr_ij_vec = np.array([torus_dist((0,0),(X[i],Y[i]),M,delta) for i in range(N)])[1:]
+    p_vec_ex = np.zeros_like(dr_ij_vec)
+    p_vec_inh = np.zeros_like(dr_ij_vec)
+
+    for i, dr_ij in enumerate(dr_ij_vec):
+        k_ij = bias_i*delta_gauss(dr_ij, sigma_i, delta) #doesn't depend on postsynaptic cell-type
+        k_ji_ex = p_e*bias_e*delta_gauss(dr_ij, sigma_e, delta) #incoming connection to an excitatory neuron
+        k_ji_inh = (1-p_e)*bias_i*delta_gauss(dr_ij, sigma_i, delta) #incoming connection to an inhibitory neuron
+        p_ij_ex, p_ji_ex, q  = _trinomial(k_ij, k_ji_ex, q)
+        p_ij_inh, p_ji_inh, q  = _trinomial(k_ij, k_ji_inh, q)
+        p_vec_ex[i] = p_ji_ex
+        p_vec_inh[i] = p_ji_inh
+
+    avg_in_ex = np.sum(p_vec_ex)
+    avg_in_inh = np.sum(p_vec_inh)
+
+    return avg_in_ex, avg_in_inh

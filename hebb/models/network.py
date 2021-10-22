@@ -29,7 +29,7 @@ class GaussianNetwork:
 
     """
 
-    def __init__(self, N, sigma, bias_ij, bias_ji, q, delta=1):
+    def __init__(self, N, sigma, q, delta=1):
 
         #check sigma value to ensure reasonable connection probabilities
         # min_sig = 5
@@ -46,8 +46,6 @@ class GaussianNetwork:
         self.M = int(round(np.sqrt(N)))
         self.delta = delta
         self.sigma = sigma
-        self.bias_ij = bias_ij
-        self.bias_ji = bias_ji
         self.q = q
         self.C = np.zeros((N,N))
 
@@ -62,13 +60,92 @@ class GaussianNetwork:
             r_i = self.X[i], self.Y[i] #neuron i grid coordinates
             r_j = self.X[j], self.Y[j] #neuron j grid coordinates
             dr_ij = torus_dist(r_i, r_j, self.M, delta=self.delta)
-            k_ij = self.bias_ij[r_i]*delta_gauss(dr_ij, self.sigma[r_i], self.delta)
-            k_ji = self.bias_ij[r_i]*delta_gauss(dr_ij, self.sigma[r_j], self.delta)
+            k_ij = delta_gauss(dr_ij, self.sigma[r_i], self.delta)
+            k_ji = delta_gauss(dr_ij, self.sigma[r_j], self.delta)
             syn = trinomial(k_ij, k_ij, self.q)
             if syn == 1:
                 self.C[i,j] = 1
             elif syn == -1:
                 self.C[j,i] = 1
+
+class ExInGaussianNetwork:
+
+    """
+    This function generates a gaussian network from parameter maps
+    over a 2D lattice. Generates a connectivity matrix Cij in O(n^2) time
+
+    Parameters
+    ----------
+    N : int
+        Total number of units in the network
+    sigma : 2D ndarray
+        Reach parameter for every neuron
+    bias_ij : 2D ndarray
+        Bias for connection direction i->j
+    bias_ji : 2D ndarray
+        Bias for connection direction j->i
+    q : 2D ndarray
+        Binomial probability of no synapse
+
+    """
+
+    def __init__(self, N, sigma_e, sigma_i, bias_e, bias_i, q, p_e=0.8, delta=1):
+
+        #check bias values
+        max_bias_e = np.exp(delta**2/(2*sigma_e**2))
+        max_bias_i = np.exp(delta**2/(2*sigma_e**2))
+        print(f'Maximum excitatory bias value: {max_bias_e}')
+        print(f'Maximum inhibitory bias value: {max_bias_i}')
+        if bias_e > max_bias_e:
+             raise ValueError(f'Excitatory bias is beyond the maximum value {max_bias_e}')
+        elif bias_i > max_bias_i:
+             raise ValueError(f'Inhibitory bias is beyond the maximum value {max_bias_i}')
+
+        self.N = N
+        self.M = int(round(np.sqrt(N)))
+        self.delta = delta
+        self.sigma_e = sigma_e
+        self.sigma_i = sigma_i
+        self.bias_e = bias_e
+        self.bias_i = bias_i
+        self.q = q
+        self.C = np.zeros((N,N))
+
+        #Randomly select p_e*N neurons to be excitatory
+        bb = np.arange(0,N,1)
+        self.ex_idx = np.random.choice(bb, size=int(round(p_e*self.N)), replace=False)
+        self.in_idx = np.setdiff1d(bb,self.ex_idx)
+
+        #Get a meshgrid to convert between an (N,1) vector and a (M,M) grid
+        xv, yv = np.meshgrid(np.arange(self.M),np.arange(self.M))
+        self.X, self.Y = xv.ravel(), yv.ravel()
+
+        #Get upper triangle indices
+        idx_x, idx_y = np.triu_indices(self.N, k=1) #upper triangle indices
+
+        #Build bias maps and sigma maps
+        self.sigma = np.zeros((self.M,self.M))
+        self.bias = np.zeros((self.M,self.M))
+        self.sigma[self.X[self.ex_idx], self.Y[self.ex_idx]] = self.sigma_e
+        self.sigma[self.X[self.in_idx], self.Y[self.in_idx]] = self.sigma_i
+        self.bias[self.X[self.ex_idx], self.Y[self.ex_idx]] = self.bias_e
+        self.bias[self.X[self.in_idx], self.Y[self.in_idx]] = self.bias_i
+
+        #iterate over upper triangle of connectivity matrix
+        for k in range(idx_x.shape[0]):
+            #get grid coordinates from conn matrix indices
+            i = idx_x[k]; j = idx_y[k]
+            r_i = self.X[i], self.Y[i] #neuron i grid coordinates
+            r_j = self.X[j], self.Y[j] #neuron j grid coordinates
+            dr_ij = torus_dist(r_i, r_j, self.M, delta=self.delta)
+            k_ij = self.bias[r_i]*delta_gauss(dr_ij, self.sigma[r_i], self.delta)
+            k_ji = self.bias[r_j]*delta_gauss(dr_ij, self.sigma[r_j], self.delta)
+            syn = trinomial(k_ij, k_ij, self.q)
+            if syn == 1:
+                self.C[i,j] = 1
+            elif syn == -1:
+                self.C[j,i] = 1
+
 
 class FractalNetwork:
 

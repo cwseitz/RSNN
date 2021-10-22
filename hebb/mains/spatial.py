@@ -14,7 +14,5 @@ from hebb.models import *
 ##################################################
 
 #Homogeneous Gaussian Network
-
-
-fig_1()
+fig_2()
 plt.show()
