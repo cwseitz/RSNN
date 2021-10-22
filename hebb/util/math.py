@@ -170,58 +170,122 @@ def hogn_out_deg_full(N, sigmas, qs, bias=1, delta=1):
             var_arr[i,j] = hogn_var_out_deg(N, sigma, bias, q, delta)
     return avg_arr, var_arr
 
-def exin_avg_e_in_deg(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e, delta=1):
+def exin_avg_e_deg(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e, delta=1):
 
     """
     Average number of excitatory connections and inhibitory connections coming
-    into an excitatory neuron
+    into and going out of an excitatory neuron
     """
 
+    p_i = 1-p_e
     M = int(round(np.sqrt(N)))
     xv, yv = np.meshgrid(np.arange(M),np.arange(M))
     X, Y = xv.ravel(), yv.ravel()
     dr_ij_vec = np.array([torus_dist((0,0),(X[i],Y[i]),M,delta) for i in range(N)])[1:]
-    p_vec_ex = np.zeros_like(dr_ij_vec)
-    p_vec_inh = np.zeros_like(dr_ij_vec)
+    p_ee_in_vec = np.zeros_like(dr_ij_vec)
+    p_ee_out_vec = np.zeros_like(dr_ij_vec)
+    p_ei_in_vec = np.zeros_like(dr_ij_vec)
+    p_ei_out_vec = np.zeros_like(dr_ij_vec)
 
     for i, dr_ij in enumerate(dr_ij_vec):
-        k_ij = bias_e*delta_gauss(dr_ij, sigma_e, delta) #doesn't depend on postsynaptic cell-type
-        k_ji_ex = p_e*bias_e*delta_gauss(dr_ij, sigma_e, delta) #incoming connection to an excitatory neuron
-        k_ji_inh = (1-p_e)*bias_i*delta_gauss(dr_ij, sigma_i, delta) #incoming connection to an inhibitory neuron
-        p_ij_ex, p_ji_ex, q  = _trinomial(k_ij, k_ji_ex, q)
-        p_ij_inh, p_ji_inh, q  = _trinomial(k_ij, k_ji_inh, q)
-        p_vec_ex[i] = p_ji_ex
-        p_vec_inh[i] = p_ji_inh
+        k_ex_out = bias_e*delta_gauss(dr_ij, sigma_e, delta)
+        k_inh_in = bias_i*delta_gauss(dr_ij, sigma_i, delta)
+        p_ee_out, p_ee_in, q  = _trinomial(k_ex_out, k_ex_out, q)
+        p_ei_out, p_ei_in, q  = _trinomial(k_ex_out, k_inh_in, q)
+        p_ee_in_vec[i] = p_ee_in #E <- E
+        p_ee_out_vec[i] = p_ee_out #E -> E
+        p_ei_in_vec[i] = p_ei_in #E <- I
+        p_ei_out_vec[i] = p_ei_out #E -> I
 
-    avg_in_ex = np.sum(p_vec_ex)
-    avg_in_inh = np.sum(p_vec_inh)
+    avg_ee_in = np.sum(p_ee_in_vec*p_e*p_e)
+    avg_ee_out = np.sum(p_ee_out_vec*p_e*p_e)
+    avg_ei_in = np.sum(p_ei_in_vec*p_i*p_e)
+    avg_ei_out = np.sum(p_ei_out_vec*p_i*p_e)
 
-    return avg_in_ex, avg_in_inh
+    return avg_ee_out, avg_ee_in, avg_ei_out, avg_ei_in
 
-def exin_avg_i_in_deg(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e, delta=1):
+def exin_avg_i_deg(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e, delta=1):
 
     """
     Average number of excitatory connections and inhibitory connections coming
-    into an inhibitory neuron
+    into and going out of an excitatory neuron
     """
 
+    p_i = 1-p_e
     M = int(round(np.sqrt(N)))
     xv, yv = np.meshgrid(np.arange(M),np.arange(M))
     X, Y = xv.ravel(), yv.ravel()
     dr_ij_vec = np.array([torus_dist((0,0),(X[i],Y[i]),M,delta) for i in range(N)])[1:]
-    p_vec_ex = np.zeros_like(dr_ij_vec)
-    p_vec_inh = np.zeros_like(dr_ij_vec)
+    p_ii_in_vec = np.zeros_like(dr_ij_vec)
+    p_ii_out_vec = np.zeros_like(dr_ij_vec)
+    p_ie_in_vec = np.zeros_like(dr_ij_vec)
+    p_ie_out_vec = np.zeros_like(dr_ij_vec)
 
     for i, dr_ij in enumerate(dr_ij_vec):
-        k_ij = bias_i*delta_gauss(dr_ij, sigma_i, delta) #doesn't depend on postsynaptic cell-type
-        k_ji_ex = p_e*bias_e*delta_gauss(dr_ij, sigma_e, delta) #incoming connection to an excitatory neuron
-        k_ji_inh = (1-p_e)*bias_i*delta_gauss(dr_ij, sigma_i, delta) #incoming connection to an inhibitory neuron
-        p_ij_ex, p_ji_ex, q  = _trinomial(k_ij, k_ji_ex, q)
-        p_ij_inh, p_ji_inh, q  = _trinomial(k_ij, k_ji_inh, q)
-        p_vec_ex[i] = p_ji_ex
-        p_vec_inh[i] = p_ji_inh
+        k_inh_out = bias_i*delta_gauss(dr_ij, sigma_i, delta)
+        k_ex_in = bias_e*delta_gauss(dr_ij, sigma_e, delta)
+        p_ii_out, p_ii_in, q  = _trinomial(k_inh_out, k_inh_out, q)
+        p_ie_out, p_ie_in, q  = _trinomial(k_inh_out, k_ex_in, q)
+        p_ii_in_vec[i] = p_ii_in #I <- I
+        p_ii_out_vec[i] = p_ii_out #I -> I
+        p_ie_in_vec[i] = p_ie_in #I <- E
+        p_ie_out_vec[i] = p_ie_out #I -> E
 
-    avg_in_ex = np.sum(p_vec_ex)
-    avg_in_inh = np.sum(p_vec_inh)
+    avg_ii_in = np.sum(p_ii_in_vec*p_i*p_i)
+    avg_ii_out = np.sum(p_ii_out_vec*p_i*p_i)
+    avg_ie_in = np.sum(p_ie_in_vec*p_e*p_i)
+    avg_ie_out = np.sum(p_ie_out_vec*p_e*p_i)
 
-    return avg_in_ex, avg_in_inh
+    return avg_ii_out, avg_ii_in, avg_ie_out, avg_ie_in
+
+def exin_e_deg_fixqbias(N, sigmas, bias_e, bias_i, q, p_e, delta=1):
+
+    """
+    Average in and out degree of an excitatory neuron and an inhibitory neuron
+    in an excitatory-inhibitory gaussian network
+    """
+
+    nsigma = sigmas.shape[0]
+    xv, yv = np.meshgrid(np.arange(nsigma),np.arange(nsigma))
+    X, Y = xv.ravel(), yv.ravel()
+
+    sig_e_v, sig_i_v = np.meshgrid(sigmas,sigmas)
+    sigma_e, sigma_i = sig_e_v.ravel(), sig_i_v.ravel()
+    n_ee_out = np.zeros((nsigma,nsigma))
+    n_ee_in = np.zeros((nsigma,nsigma))
+    n_ei_out = np.zeros((nsigma,nsigma))
+    n_ei_in = np.zeros((nsigma,nsigma))
+    for i in range(sigma_e.shape[0]):
+        avg_ee_out, avg_ee_in, avg_ei_out, avg_ei_in =\
+        exin_avg_e_deg(N, sigma_e[i], sigma_i[i], bias_e, bias_i, q, p_e)
+        n_ee_out[X[i],Y[i]] = avg_ee_out
+        n_ee_in[X[i],Y[i]] = avg_ee_in
+        n_ei_out[X[i],Y[i]] = avg_ei_out
+        n_ei_in[X[i],Y[i]] = avg_ei_in
+    return n_ee_out, n_ee_in, n_ei_out, n_ei_in
+
+def exin_i_deg_fixqbias(N, sigmas, bias_e, bias_i, q, p_e, delta=1):
+
+    """
+    Average in and out degree of an excitatory neuron and an inhibitory neuron
+    in an excitatory-inhibitory gaussian network
+    """
+
+    nsigma = sigmas.shape[0]
+    xv, yv = np.meshgrid(np.arange(nsigma),np.arange(nsigma))
+    X, Y = xv.ravel(), yv.ravel()
+
+    sig_e_v, sig_i_v = np.meshgrid(sigmas,sigmas)
+    sigma_e, sigma_i = sig_e_v.ravel(), sig_i_v.ravel()
+    n_ii_out = np.zeros((nsigma,nsigma))
+    n_ii_in = np.zeros((nsigma,nsigma))
+    n_ie_out = np.zeros((nsigma,nsigma))
+    n_ie_in = np.zeros((nsigma,nsigma))
+    for i in range(sigma_e.shape[0]):
+        avg_ii_out, avg_ii_in, avg_ie_out, avg_ie_in =\
+        exin_avg_i_deg(N, sigma_e[i], sigma_i[i], bias_e, bias_i, q, p_e)
+        n_ii_out[X[i],Y[i]] = avg_ii_out
+        n_ii_in[X[i],Y[i]] = avg_ii_in
+        n_ie_out[X[i],Y[i]] = avg_ie_out
+        n_ie_in[X[i],Y[i]] = avg_ie_in
+    return n_ii_out, n_ii_in, n_ie_out, n_ie_in

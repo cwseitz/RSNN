@@ -109,38 +109,164 @@ def fig_2():
     N = 100
     M = int(round(np.sqrt(N)))
     q = 0.1
-    sigma_e = 3; sigma_i = 5
-    bias_e = 0.5; bias_i = 1
-    net = ExInGaussianNetwork(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e=0.8)
+    p_e = 0.8
+    sigma_e = 5; sigma_i = 5
+    bias_e = 1; bias_i = 1
+    net = ExInGaussianNetwork(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e=p_e)
     custom_lines = [Line2D([0],[0],color='salmon', lw=4),Line2D([0],[0],color='cornflowerblue', lw=4)]
 
-    fig = plt.figure(figsize=(8,3.5))
-    gs = fig.add_gridspec(2,4, wspace=0.75, hspace=0.75)
+    fig = plt.figure(figsize=(12,4))
+    gs = fig.add_gridspec(2,6, wspace=1, hspace=1)
     ax0 = fig.add_subplot(gs[:, :2])
     ax1 = fig.add_subplot(gs[0, 2:3])
     ax2 = fig.add_subplot(gs[0, 3:4])
-    ax3 = fig.add_subplot(gs[1, 2:4])
+    ax3 = fig.add_subplot(gs[1, 2:3])
+    ax4 = fig.add_subplot(gs[1, 3:4])
+    ax5 = fig.add_subplot(gs[0, 4:5])
+    ax6 = fig.add_subplot(gs[0, 5:6])
+    ax7 = fig.add_subplot(gs[1, 4:5])
+    ax8 = fig.add_subplot(gs[1, 5:6])
 
     add_spring_graph(ax0, net)
 
 
     """
-    Fix q, p_e, bias_e, and bias_i and generate <N_ij^E> and <N_ij^I>
-    maps of sigma_e vs sigma_i
+    Fix q, p_e, bias_e, and bias_i and generate maps of sigma_e vs sigma_i
     """
 
-    w = 20
-    qs = np.linspace(0.1,1,w)
-    ax = [ax4,ax5,ax6]
-    for i, sigma in enumerate(sigmas):
-        avg_arr, var_arr = het_out_deg_fixsig(N, sigma, qs, n_bias=w)
-        ax[i].imshow(avg_arr, origin='lower', cmap='coolwarm')
-        ax[i].set_xticks([0,w])
-        ax[i].set_ylabel(r'$q$')
-        ax[i].set_yticklabels([0,1])
-        ax[i].set_yticks([0,w])
-        ax[i].set_xticklabels([1, r'$\gamma_{max}$'])
-        ax[i].set_xlabel(r'$\gamma$')
+    nsigma = 50
+    sigmas = np.linspace(np.sqrt(N)/16,np.sqrt(N)/2,nsigma)
+    n_ee_out, n_ee_in, n_ei_out, n_ei_in =\
+    exin_e_deg_fixqbias(N, sigmas, bias_e, bias_i, q, p_e)
+    n_ee_out /= N
+    n_ee_in /= N
+    n_ei_out /= N
+    n_ei_in /= N
+
+    ax1.imshow(n_ee_in, origin='lower', cmap='coolwarm')
+    ax1.set_xlabel(r'$\sigma_{I}$')
+    ax1.set_ylabel(r'$\sigma_{E}$')
+    ax1.set_xticks([0,nsigma])
+    ax1.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax1.set_yticks([0,nsigma])
+    ax1.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax1.xaxis.tick_top()
+    ax1.xaxis.set_label_position('top')
+    colormap = cm.get_cmap('coolwarm')
+    norm = mpl.colors.Normalize(vmin=0, vmax=n_ee_in.max())
+    map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+    plt.colorbar(map, ax=ax1, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{in}^{E}\rangle$')
+
+    ax2.imshow(n_ei_in, origin='lower', cmap='coolwarm')
+    ax2.set_xlabel(r'$\sigma_{I}$')
+    ax2.set_ylabel(r'$\sigma_{E}$')
+    ax2.set_xticks([0,nsigma])
+    ax2.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax2.set_yticks([0,nsigma])
+    ax2.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax2.xaxis.tick_top()
+    ax2.xaxis.set_label_position('top')
+    colormap = cm.get_cmap('coolwarm')
+    norm = mpl.colors.Normalize(vmin=0, vmax=n_ei_in.max())
+    map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+    plt.colorbar(map, ax=ax2, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{in}^{I}\rangle$')
+
+    ax3.imshow(n_ee_out, origin='lower', cmap='coolwarm')
+    ax3.set_xlabel(r'$\sigma_{I}$')
+    ax3.set_ylabel(r'$\sigma_{E}$')
+    ax3.set_xticks([0,nsigma])
+    ax3.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax3.set_yticks([0,nsigma])
+    ax3.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax3.xaxis.tick_top()
+    ax3.xaxis.set_label_position('top')
+    colormap = cm.get_cmap('coolwarm')
+    norm = mpl.colors.Normalize(vmin=0, vmax=n_ee_out.max())
+    map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+    plt.colorbar(map, ax=ax3, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{out}^{E}\rangle$')
+
+    ax4.imshow(n_ei_out, origin='lower', cmap='coolwarm')
+    ax4.set_xlabel(r'$\sigma_{I}$')
+    ax4.set_ylabel(r'$\sigma_{E}$')
+    ax4.set_xticks([0,nsigma])
+    ax4.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax4.set_yticks([0,nsigma])
+    ax4.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax4.xaxis.tick_top()
+    ax4.xaxis.set_label_position('top')
+    colormap = cm.get_cmap('coolwarm')
+    norm = mpl.colors.Normalize(vmin=0, vmax=n_ei_out.max())
+    map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+    plt.colorbar(map, ax=ax4, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{out}^{I}\rangle$')
+
+
+    n_ii_out, n_ii_in, n_ie_out, n_ie_in =\
+    exin_i_deg_fixqbias(N, sigmas, bias_e, bias_i, q, p_e)
+    n_ii_out /= N
+    n_ii_in /= N
+    n_ie_out /= N
+    n_ie_in /= N
+
+
+    ax5.imshow(n_ie_in, origin='lower', cmap='coolwarm')
+    ax5.set_xlabel(r'$\sigma_{I}$')
+    ax5.set_ylabel(r'$\sigma_{E}$')
+    ax5.set_xticks([0,nsigma])
+    ax5.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax5.set_yticks([0,nsigma])
+    ax5.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax5.xaxis.tick_top()
+    ax5.xaxis.set_label_position('top')
+    colormap = cm.get_cmap('coolwarm')
+    norm = mpl.colors.Normalize(vmin=0, vmax=n_ie_in.max())
+    map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+    plt.colorbar(map, ax=ax5, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle I_{in}^{E}\rangle$')
+
+
+    ax6.imshow(n_ii_in, origin='lower', cmap='coolwarm')
+    ax6.set_xlabel(r'$\sigma_{I}$')
+    ax6.set_ylabel(r'$\sigma_{E}$')
+    ax6.set_xticks([0,nsigma])
+    ax6.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax6.set_yticks([0,nsigma])
+    ax6.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax6.xaxis.tick_top()
+    ax6.xaxis.set_label_position('top')
+    colormap = cm.get_cmap('coolwarm')
+    norm = mpl.colors.Normalize(vmin=0, vmax=n_ii_in.max())
+    map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+    plt.colorbar(map, ax=ax6, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle I_{in}^{I}\rangle$')
+
+
+    ax7.imshow(n_ie_out, origin='lower', cmap='coolwarm')
+    ax7.set_xlabel(r'$\sigma_{I}$')
+    ax7.set_ylabel(r'$\sigma_{E}$')
+    ax7.set_xticks([0,nsigma])
+    ax7.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax7.set_yticks([0,nsigma])
+    ax7.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax7.xaxis.tick_top()
+    ax7.xaxis.set_label_position('top')
+    colormap = cm.get_cmap('coolwarm')
+    norm = mpl.colors.Normalize(vmin=0, vmax=n_ie_out.max())
+    map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+    plt.colorbar(map, ax=ax7, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle I_{out}^{E}\rangle$')
+
+
+    ax8.imshow(n_ii_out, origin='lower', cmap='coolwarm')
+    ax8.set_xlabel(r'$\sigma_{I}$')
+    ax8.set_ylabel(r'$\sigma_{E}$')
+    ax8.set_xticks([0,nsigma])
+    ax8.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax8.set_yticks([0,nsigma])
+    ax8.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax8.xaxis.tick_top()
+    ax8.xaxis.set_label_position('top')
+    colormap = cm.get_cmap('coolwarm')
+    norm = mpl.colors.Normalize(vmin=0, vmax=n_ii_out.max())
+    map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+    plt.colorbar(map, ax=ax8, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle I_{out}^{I}\rangle$')
+
 
     plt.tight_layout()
 
