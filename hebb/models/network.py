@@ -5,7 +5,7 @@ import matplotlib as mpl
 from matplotlib import cm
 from numpy.random import default_rng
 from networkx.generators.random_graphs import erdos_renyi_graph
-from hebb.util import *
+from ..util import *
 
 
 class GaussianNetwork:
@@ -140,11 +140,27 @@ class ExInGaussianNetwork:
             dr_ij = torus_dist(r_i, r_j, self.M, delta=self.delta)
             k_ij = self.bias[r_i]*delta_gauss(dr_ij, self.sigma[r_i], self.delta)
             k_ji = self.bias[r_j]*delta_gauss(dr_ij, self.sigma[r_j], self.delta)
-            syn = trinomial(k_ij, k_ij, self.q)
+            syn = trinomial(k_ij, k_ji, self.q)
             if syn == 1:
                 self.C[i,j] = 1
             elif syn == -1:
                 self.C[j,i] = 1
+
+    def get_deg_dist(self):
+        ei = np.sum(self.C[:,self.ex_idx][self.in_idx,:],axis=1) #e->i
+        ie = np.sum(self.C[:,self.in_idx][self.ex_idx,:],axis=1) #i->e
+        ee = np.sum(self.C[:,self.ex_idx][self.ex_idx,:],axis=1) #e->e
+        ii = np.sum(self.C[:,self.in_idx][self.in_idx,:],axis=1) #i->i
+        return ei, ie, ee, ii
+
+    def get_deg_avg(self):
+        ei, ie, ee, ii = self.get_deg_dist()
+        ei_avg = np.mean(ei)
+        ie_avg = np.mean(ie)
+        ee_avg = np.mean(ee)
+        ii_avg = np.mean(ii)
+        return ei_avg, ie_avg, ee_avg, ii_avg
+
 
 
 class FractalNetwork:

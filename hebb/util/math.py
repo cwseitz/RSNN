@@ -197,10 +197,10 @@ def exin_avg_e_deg(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e, delta=1):
         p_ei_in_vec[i] = p_ei_in #E <- I
         p_ei_out_vec[i] = p_ei_out #E -> I
 
-    avg_ee_in = np.sum(p_ee_in_vec*p_e*p_e)
-    avg_ee_out = np.sum(p_ee_out_vec*p_e*p_e)
-    avg_ei_in = np.sum(p_ei_in_vec*p_i*p_e)
-    avg_ei_out = np.sum(p_ei_out_vec*p_i*p_e)
+    avg_ee_in = np.sum(p_ee_in_vec*p_e)
+    avg_ee_out = np.sum(p_ee_out_vec*p_e)
+    avg_ei_in = np.sum(p_ei_in_vec*p_i)
+    avg_ei_out = np.sum(p_ei_out_vec*p_e)
 
     return avg_ee_out, avg_ee_in, avg_ei_out, avg_ei_in
 
@@ -231,10 +231,10 @@ def exin_avg_i_deg(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e, delta=1):
         p_ie_in_vec[i] = p_ie_in #I <- E
         p_ie_out_vec[i] = p_ie_out #I -> E
 
-    avg_ii_in = np.sum(p_ii_in_vec*p_i*p_i)
-    avg_ii_out = np.sum(p_ii_out_vec*p_i*p_i)
-    avg_ie_in = np.sum(p_ie_in_vec*p_e*p_i)
-    avg_ie_out = np.sum(p_ie_out_vec*p_e*p_i)
+    avg_ii_in = np.sum(p_ii_in_vec*p_i)
+    avg_ii_out = np.sum(p_ii_out_vec*p_i)
+    avg_ie_in = np.sum(p_ie_in_vec*p_e)
+    avg_ie_out = np.sum(p_ie_out_vec*p_i)
 
     return avg_ii_out, avg_ii_in, avg_ie_out, avg_ie_in
 
