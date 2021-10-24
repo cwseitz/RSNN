@@ -2,6 +2,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib import cm
+from skimage.io import imread
 from hebb.util import *
 from hebb.models import *
 from matplotlib.ticker import FormatStrFormatter
@@ -255,19 +256,37 @@ def fig_3():
     This figure is for validating the numerical solution with the experiemental
     """
 
-    fig = plt.figure(figsize=(7,8))
-    gs = fig.add_gridspec(4,4, wspace=1, hspace=2)
-    ax0 = fig.add_subplot(gs[:2, :2])
-    ax1 = fig.add_subplot(gs[0, 2:3])
-    ax2 = fig.add_subplot(gs[0, 3:4])
-    ax3 = fig.add_subplot(gs[1, 2:3])
-    ax4 = fig.add_subplot(gs[1, 3:4])
+    fig = plt.figure(figsize=(7,10))
+    gs = fig.add_gridspec(6,4, wspace=1, hspace=1)
+    ax0 = fig.add_subplot(gs[2:4, :2])
+    ax1 = fig.add_subplot(gs[2, 2:3])
+    ax2 = fig.add_subplot(gs[2, 3:4])
+    ax3 = fig.add_subplot(gs[3, 2:3])
+    ax4 = fig.add_subplot(gs[3, 3:4])
 
-    ax5 = fig.add_subplot(gs[2:, :2])
-    ax6 = fig.add_subplot(gs[2, 2:3])
-    ax7 = fig.add_subplot(gs[2, 3:4])
-    ax8 = fig.add_subplot(gs[3, 2:3])
-    ax9 = fig.add_subplot(gs[3, 3:4])
+    ax5 = fig.add_subplot(gs[4:, :2])
+    ax6 = fig.add_subplot(gs[4, 2:3])
+    ax7 = fig.add_subplot(gs[4, 3:4])
+    ax8 = fig.add_subplot(gs[5, 2:3])
+    ax9 = fig.add_subplot(gs[5, 3:4])
+
+    ax10 = fig.add_subplot(gs[:3, :2])
+    im = imread('../util/assets/ei-diagram.png')
+    ax10.imshow(im)
+    ax10.set_xticks([]); ax10.set_yticks([])
+    ax10.spines['right'].set_visible(False)
+    ax10.spines['top'].set_visible(False)
+    ax10.spines['left'].set_visible(False)
+    ax10.spines['bottom'].set_visible(False)
+
+    ax11 = fig.add_subplot(gs[:3, 2:])
+    im = imread('../util/assets/ei-diagram.png')
+    ax11.imshow(im)
+    ax11.set_xticks([]); ax11.set_yticks([])
+    ax11.spines['right'].set_visible(False)
+    ax11.spines['top'].set_visible(False)
+    ax11.spines['left'].set_visible(False)
+    ax11.spines['bottom'].set_visible(False)
 
     N = 100
     M = int(round(np.sqrt(N)))
@@ -276,8 +295,10 @@ def fig_3():
     sigma_e = 5; sigma_i = 5
     bias_e = 1; bias_i = 1
     net = ExInGaussianNetwork(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e=p_e)
-    custom_lines = [Line2D([0],[0],color='salmon', lw=4),Line2D([0],[0],color='cornflowerblue', lw=4)]
+    custom_lines = [Line2D([0],[0],color='red', lw=4),Line2D([0],[0],color='cornflowerblue', lw=4)]
     add_spring_graph(ax0, net)
+    ax0.set_title(r'$q=0.1$')
+    ax0.legend(custom_lines, ['E', 'I'], loc='upper left')
 
 
     """
@@ -309,15 +330,15 @@ def fig_3():
     ax2.set_xlabel(r'$\sigma_{I}$')
     ax2.set_ylabel(r'$\sigma_{E}$')
     ax2.set_xticks([0,nsigma])
-    ax2.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax2.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'], fontsize=8)
     ax2.set_yticks([0,nsigma])
-    ax2.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax2.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'], fontsize=8)
     ax2.xaxis.tick_top()
-    ax2.xaxis.set_label_position('top')
+    #ax2.xaxis.set_label_position('top')
     colormap = cm.get_cmap('coolwarm')
     norm = mpl.colors.Normalize(vmin=0, vmax=n_ei_in.max())
     map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
-    plt.colorbar(map, ax=ax2, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{in}^{I}\rangle,\langle I_{out}^{E}\rangle$')
+    plt.colorbar(map, ax=ax2, fraction=0.046, pad=0.04, orientation='vertical', label=r'$\langle E_{in}^{I}\rangle,\langle I_{out}^{E}\rangle$')
 
     ax3.plot(np.mean(n_ee_in,axis=1), color='red')
     ax3.set_xlabel(r'$\sigma_{E}$')
@@ -329,15 +350,15 @@ def fig_3():
     ax4.set_xlabel(r'$\sigma_{I}$')
     ax4.set_ylabel(r'$\sigma_{E}$')
     ax4.set_xticks([0,nsigma])
-    ax4.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax4.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'], fontsize=8)
     ax4.set_yticks([0,nsigma])
-    ax4.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax4.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'], fontsize=8)
     ax4.xaxis.tick_top()
-    ax4.xaxis.set_label_position('top')
+    #ax4.xaxis.set_label_position('top')
     colormap = cm.get_cmap('coolwarm')
     norm = mpl.colors.Normalize(vmin=0, vmax=n_ei_out.max())
     map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
-    plt.colorbar(map, ax=ax4, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{out}^{I}\rangle,\langle I_{in}^{E}\rangle$')
+    plt.colorbar(map, ax=ax4, fraction=0.046, pad=0.04, orientation='vertical', label=r'$\langle E_{out}^{I}\rangle,\langle I_{in}^{E}\rangle$')
 
     N = 100
     M = int(round(np.sqrt(N)))
@@ -346,9 +367,10 @@ def fig_3():
     sigma_e = 5; sigma_i = 5
     bias_e = 1; bias_i = 1
     net = ExInGaussianNetwork(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e=p_e)
-    custom_lines = [Line2D([0],[0],color='salmon', lw=4),Line2D([0],[0],color='cornflowerblue', lw=4)]
+    custom_lines = [Line2D([0],[0],color='red', lw=4),Line2D([0],[0],color='cornflowerblue', lw=4)]
     add_spring_graph(ax5, net)
-
+    ax5.set_title(r'$q=0.9$')
+    ax5.legend(custom_lines, ['E', 'I'], loc='upper left')
 
     """
     Fix q, p_e, bias_e, and bias_i and generate maps of sigma_e vs sigma_i
@@ -379,15 +401,15 @@ def fig_3():
     ax7.set_xlabel(r'$\sigma_{I}$')
     ax7.set_ylabel(r'$\sigma_{E}$')
     ax7.set_xticks([0,nsigma])
-    ax7.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax7.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'], fontsize=8)
     ax7.set_yticks([0,nsigma])
-    ax7.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax7.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'], fontsize=8)
     ax7.xaxis.tick_top()
-    ax7.xaxis.set_label_position('top')
+    #ax7.xaxis.set_label_position('top')
     colormap = cm.get_cmap('coolwarm')
     norm = mpl.colors.Normalize(vmin=0, vmax=n_ei_in.max())
     map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
-    plt.colorbar(map, ax=ax7, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{in}^{I}\rangle,\langle I_{out}^{E}\rangle$')
+    plt.colorbar(map, ax=ax7, fraction=0.046, pad=0.04, orientation='vertical', label=r'$\langle E_{in}^{I}\rangle,\langle I_{out}^{E}\rangle$')
 
     ax8.plot(np.mean(n_ee_in,axis=1), color='red')
     ax8.set_xlabel(r'$\sigma_{E}$')
@@ -399,15 +421,15 @@ def fig_3():
     ax9.set_xlabel(r'$\sigma_{I}$')
     ax9.set_ylabel(r'$\sigma_{E}$')
     ax9.set_xticks([0,nsigma])
-    ax9.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax9.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'], fontsize=8)
     ax9.set_yticks([0,nsigma])
-    ax9.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax9.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'], fontsize=8)
     ax9.xaxis.tick_top()
-    ax9.xaxis.set_label_position('top')
+    #ax9.xaxis.set_label_position('top')
     colormap = cm.get_cmap('coolwarm')
     norm = mpl.colors.Normalize(vmin=0, vmax=n_ei_out.max())
     map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
-    plt.colorbar(map, ax=ax9, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{out}^{I}\rangle,\langle I_{in}^{E}\rangle$')
+    plt.colorbar(map, ax=ax9, fraction=0.046, pad=0.04, orientation='vertical', label=r'$\langle E_{out}^{I}\rangle,\langle I_{in}^{E}\rangle$')
 
 
     # """
@@ -446,7 +468,7 @@ def fig_3():
     # colormap = cm.get_cmap('coolwarm')
     # norm = mpl.colors.Normalize(vmin=0, vmax=ie_mat.max())
     # map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
-    # plt.colorbar(map, ax=ax5, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{in}^{I}\rangle,\langle I_{out}^{E}\rangle$')
+    # plt.colorbar(map, ax=ax5, fraction=0.046, pad=0.04, orientation='vertical', label=r'$\langle E_{in}^{I}\rangle,\langle I_{out}^{E}\rangle$')
     #
     # ax7.imshow(ei_mat, origin='lower', cmap='coolwarm')
     # ax7.set_xlabel(r'$\sigma_{I}$')
