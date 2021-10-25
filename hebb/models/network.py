@@ -68,6 +68,23 @@ class GaussianNetwork:
             elif syn == -1:
                 self.C[j,i] = 1
 
+    def get_shared_inputs(self):
+
+        """
+        Get number of shared inputs 
+        """
+
+        dists = np.zeros((self.N**2))
+        nshared = np.zeros((self.N**2))
+        av, bv = np.meshgrid(np.arange(self.N),np.arange(self.N))
+        A, B = av.ravel(), bv.ravel()
+        for i in range(A.shape[0]):
+            r1 = (self.X[A[i]],self.Y[A[i]])
+            r2 = (self.X[B[i]], self.Y[B[i]])
+            dists[i] = torus_dist(r1, r2, self.M, self.delta)
+            nshared[i] = np.sum(np.logical_and(self.C[:,A[i]], self.C[:,B[i]]))
+        return dists, nshared
+
 class ExInGaussianNetwork:
 
     """

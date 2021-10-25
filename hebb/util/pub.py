@@ -104,6 +104,34 @@ def fig_2():
 
 
     """
+    Statistics of shared connectivity in a homogeneous gaussian network
+    """
+
+    N = 900
+    sigma = 5
+    q = 0.5
+
+    M = int(round(np.sqrt(N)))
+    sigmat = sigma*np.ones((M,M))
+    net = GaussianNetwork(N, sigmat, q)
+    dists, shared = net.get_shared_inputs()
+
+    unique = np.unique(dists)[1:]
+    avgs_arr = np.zeros_like(unique)
+    for i, val in enumerate(unique):
+        idx = np.where(dists == val)
+        avgs_arr[i] = np.mean(shared[idx])
+
+    #unique = np.linspace(0,np.sqrt(N)/2,100)
+    p_vec = hogn_shared(N, unique, sigma, q, delta=1)
+    plt.plot(unique, avgs_arr, color='red')
+    plt.plot(unique, p_vec, color='blue')
+
+
+def fig_3():
+
+
+    """
     Generate a excitatory-inhibitory gaussian network with excitatory
     and inhibitory bias parameters equal to one.
 
@@ -246,7 +274,7 @@ def fig_2():
     plt.colorbar(map, ax=ax7, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{out}^{I}\rangle,\langle I_{in}^{E}\rangle$')
     plt.tight_layout()
 
-def fig_3():
+def fig_4():
 
 
     """
@@ -485,7 +513,7 @@ def fig_3():
     # plt.colorbar(map, ax=ax7, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{out}^{I}\rangle,\langle I_{in}^{E}\rangle$')
     # plt.tight_layout()
 
-def fig_4(lif, net, spikes, focal=0):
+def fig_5(lif, net, spikes, focal=0):
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 10))
     ax.set_xticks([]); ax.set_yticks([])

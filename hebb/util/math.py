@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 def multi_gauss(r, mu, sigma):
 
@@ -29,15 +30,40 @@ def prod_gauss(mu_1, sigma_1, mu_2, sigma_2):
 
     return mu_3, sigma_3
 
+def gauss(N, x0, y0, sigma, delta=1):
+
+    """
+    Return a gaussian function centered at (x0,y0) sampled on a grid with
+    periodic boundary conditions
+    """
+
+    M = int(round(np.sqrt(N)))
+    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
+    X, Y = xv.ravel(), yv.ravel()
+    Z = np.exp(-0.5*torus_dist_vec(M,x0,y0,X*delta,Y*delta)**2/sigma**2)
+    Z = Z.reshape((M,M))
+
+    return Z
+
 def delta_gauss(dx, sigma, delta):
 
     """
     Return the value of a gaussian a distance dx from the mean
     """
 
-    # a = (1/(sigma*np.sqrt(2*np.pi)))
     dx *= delta
     return np.exp((-0.5*dx**2)/sigma**2)
+
+def torus_dist_vec(M, x0, y0, X, Y, delta=1):
+
+    """
+    A vectorized version of the normal torus_dist function
+    """
+
+    dx = np.minimum(np.abs(X-x0),M*delta-np.abs(X-x0))
+    dy = np.minimum(np.abs(Y-y0),M*delta-np.abs(Y-y0))
+    dr = np.sqrt(dx**2 + dy**2)
+    return dr
 
 def trinomial(k_ij, k_ji, q):
 
@@ -45,7 +71,7 @@ def trinomial(k_ij, k_ji, q):
     Draw a sample from a trinomial distribution to generate synapses.
     Inputs k_ij, k_ji, q should be binomial probabilities in [0,1]
     """
-    p_ij, p_ji, q = _trinomial(k_ij, k_ji, q)
+    p_ij, p_ji, p_x = _trinomial(k_ij, k_ji, q)
     x = np.random.uniform(0,1)
     if x <= p_ij:
         out = -1
@@ -61,9 +87,11 @@ def _trinomial(k_ij, k_ji, q):
     p_ji = k_ji*(1-k_ij)*(1-q)
     p_x = q*(1-k_ij)*(1-k_ji)
     z_ij = p_ij + p_ji + p_x
-    p_ij /= z_ij; p_ji /= z_ij; p_x /= z_ij
+    p_ij = np.divide(p_ij, z_ij, out=np.zeros_like(p_ij), where=z_ij!=0)
+    p_ji = np.divide(p_ji, z_ij, out=np.zeros_like(p_ji), where=z_ij!=0)
+    p_x = np.divide(p_x, z_ij, out=np.zeros_like(p_x), where=z_ij!=0)
 
-    return p_ij, p_ji, q
+    return p_ij, p_ji, p_x
 
 
 def torus_dist(r_i, r_j, M, delta):
@@ -289,3 +317,23 @@ def exin_i_deg_fixqbias(N, sigmas, bias_e, bias_i, q, p_e, delta=1):
         n_ie_out[X[i],Y[i]] = avg_ie_out
         n_ie_in[X[i],Y[i]] = avg_ie_in
     return n_ii_out, n_ii_in, n_ie_out, n_ie_in
+
+def hogn_shared(N, dr_ij_vec, sigma, q, delta=1):
+
+    """
+    Find the average number of shared outputs (or inputs) as a function of distance
+    between two neurons in a homogeneous gaussian network
+    """
+
+    M = int(round(np.sqrt(N)))
+    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
+    X, Y = xv.ravel(), yv.ravel()
+    p_vec = np.zeros_like(dr_ij_vec)
+    for i, dr_ij in enumerate(dr_ij_vec):
+        k_ij_1 = gauss(N, 0, 0, sigma, delta)
+        #Move the second neuron along the diagonal to minimize 'bleed over' from pbc
+        k_ij_2 = gauss(N, dr_ij/np.sqrt(2), dr_ij/np.sqrt(2), sigma, delta)
+        p_ij_1, p_ji_1, p_x_1 = _trinomial(k_ij_1, k_ij_1, q)
+        p_ij_2, p_ji_2, p_x_2 = _trinomial(k_ij_2, k_ij_2, q)
+        p_vec[i] = np.sum(p_ij_1*p_ij_2)
+    return p_vec

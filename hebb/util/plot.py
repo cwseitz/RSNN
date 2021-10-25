@@ -5,6 +5,7 @@ import matplotlib as mpl
 import matplotlib.gridspec as gridspec
 from matplotlib import cm
 from operator import itemgetter
+from .math import *
 
 def plt2array(fig):
     fig.canvas.draw()
@@ -12,6 +13,22 @@ def plt2array(fig):
     ncols, nrows = fig.canvas.get_width_height()
     rgb_array_rgb = np.frombuffer(buf, dtype=np.uint8).reshape(nrows, ncols, 3)
     return rgb_array_rgb
+
+def add_k_ij_map(ax, M, sigma, delta=1):
+
+    """
+    Show the connectivity kernel of a neuron i projecting to all other neurons j
+    """
+
+    x0 = y0 = M/2
+    im = np.zeros((M,M))
+    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
+    X, Y = xv.ravel(), yv.ravel()
+    for i in range(X.shape[0]):
+        dx = torus_dist((x0,y0),(X[i],Y[i]),M,delta)
+        im[X[i],Y[i]] = delta_gauss(dx, sigma, delta)
+    ax.imshow(im, cmap='coolwarm')
+
 
 def add_raster(ax, spikes, focal=None, trial=0, n_units=50):
 
