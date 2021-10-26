@@ -1,3 +1,3 @@
 from .network import *
-from .neuron import *
+from .rnn import *
 from .stat import *

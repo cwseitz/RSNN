@@ -3,99 +3,18 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from matplotlib import cm
-from scipy.stats import norm
 
-################################################################################
-##
-##      Statistical models that can be used for comparisons with
-##      real network simulations for arbitrary parameterizations
-##
-################################################################################
-
-################################################################################
+##################################################
+## Library of statistical models
+##################################################
 ## Author: Clayton Seitz
 ## Copyright: 2021, The Hebb Project
 ## Email: cwseitz@uchicago.edu
-################################################################################
-
-
-class Brownian:
-
-    def __init__(self, t, V0, sigma, trials=1, dtype=np.float32):
-
-        """
-
-        Integrate a Langevin equation when the diffusion term is a Gaussian white noise
-        and the drift term is zero (a Wiener Process)
-
-        """
-
-        self.t = t
-        self.V0 = V0
-        self.nsteps = len(t)
-        self.dt = np.mean(np.diff(t))
-        self.sigma = sigma
-        self.trials = trials
-        self.V = []
-
-    def forward(self):
-
-        """
-        Generate an instance of Brownian motion (i.e. the Wiener process):
-
-            X(t) = X(0) + N(0, sigma**2 * t; 0, t)
-
-        where N(a,b; t0, t1) is a normally distributed random variable with mean a and
-        variance b.  The parameters t0 and t1 make explicit the statistical
-        independence of N on different time intervals; that is, if [t0, t1) and
-        [t2, t3) are disjoint intervals, then N(a, b; t0, t1) and N(a, b; t2, t3)
-        are independent.
-
-        Written as an iteration scheme,
-
-            X(t + dt) = X(t) + N(0, sigma**2 * dt; t, t+dt)
-
-
-        If `x0` is an array (or array-like), each value in `x0` is treated as
-        an initial condition, and the value returned is a numpy array with one
-        more dimension than `x0`.
-
-        Arguments
-        ---------
-        x0 : float or numpy array (or something that can be converted to a numpy array
-             using numpy.asarray(x0)).
-            The initial condition(s) (i.e. position(s)) of the Brownian motion.
-        nsteps : int
-            The number of steps to take.
-        dt : float
-            The time step.
-        sigma : float
-            sigma determines the "speed" of the Brownian motion.  The random variable
-            of the position at time t, X(t), has a normal distribution whose mean is
-            the position at time t=0 and whose variance is sigma**2*t.
-
-        Returns
-        -------
-        """
-
-        self.dV = []
-
-        for i in range(self.trials):
-
-            # For each element of x0, generate a sample of n numbers from a normal distribution
-            self.dV_i = norm.rvs(size=(self.nsteps,), scale=self.sigma*np.sqrt(self.dt))
-            self.dV.append(self.dV_i)
-
-        self.dV = np.array(self.dV).T #rows are time, columns are simulations
-        self.V = np.cumsum(self.dV, axis=0) #cumsum over rows
-        self.V += self.V0
-
-        return self.V
-
+##################################################
 
 class OrnsteinUhlenbeck:
 
-    def __init__(self, t, tau, sigma, dv=0.001, trials=1, v_max=1, V_R=-1, dtype=np.float32):
+    def __init__(self, T, dt, tau, sigma, dx=0.1, x_max=1, x0=0, trials=1000, dtype=np.float32):
 
         """
 
@@ -104,76 +23,55 @@ class OrnsteinUhlenbeck:
 
         Parameters
         ----------
-
-        nsteps: float
-            Number of time steps before the simulation terminates
-        V0 : float
-            Initial condition for the stochastic variable V
-        alpha: float
-            Rate parameter for the linear drift of the white noise process
-            (see equation above)
-        sigma: float
-            Noise amplitude
-        trials: int
-            Number of simulations to run
-        v_min : int
-            Minimum value for the voltage domain
-        v_max : int
-            Maximum value for the voltage domain
-        dv : float
-            Resolution for the voltage domain
-
         """
 
         #Params
-        self.nsteps = len(t)
-        self.dt = np.mean(np.diff(t))
-        self.V_R = V_R
+        self.nsteps = int(round(T/dt))
+        self.dt = dt
+        self.dx = dx
+        self.x0 = x0
+        self.x_max = x_max
+        self.nx = int(round(2*self.x_max/self.dx))
         self.alpha = 1/tau
         self.sigma = sigma
         self.trials = trials
-        self.v_max = v_max
-        self.dv = dv
-        self.n_v = int(round(2*self.v_max/self.dv))
-        self._V = np.linspace(-self.v_max, self.v_max, self.n_v)
+        self._x = np.linspace(-self.x_max, self.x_max, self.nx)
 
         #Arrays for simulation history
-        self.V = np.zeros((self.nsteps, self.trials))
-        self.P_S = np.zeros((self.n_v, self.nsteps)); self.P_S[0,:] = 1
-        self.P_A = deepcopy(self.P_S)
-        self.P_N = deepcopy(self.P_S)
+        self.X = np.zeros((self.nsteps, self.trials))
+        self.p1 = np.zeros((self.nx, self.nsteps)); self.p1[0,:] = 1
+        self.p2 = deepcopy(self.p1)
 
-    def solve_fp_analytic(self):
+    def solve(self):
 
         for n in range(1, self.nsteps):
             var = (self.sigma**2/(2*self.alpha))*(1-np.exp(-2*self.alpha*n*self.dt))
-            mu = self.V_R*np.exp(-self.alpha*n*self.dt)
-            P_t = np.sqrt(1/(2*np.pi*var))*np.exp(-((self._V-mu)**2)/(2*var))
-            self.P_A[:,n] = P_t
-        return self.P_A
+            mu = self.x0*np.exp(-self.alpha*n*self.dt)
+            p0 = np.sqrt(1/(2*np.pi*var))*np.exp(-((self._x-mu)**2)/(2*var))
+            self.p2[:,n] = p0
+        return self.p2
 
     def histogram(self):
 
         for i in range(self.nsteps):
-            vals, bins = np.histogram(self.V[i,:], bins=self.n_v, range=(-self.v_max,self.v_max), density=False)
-            self.P_S[:,i] = vals/(np.sum(vals)*self.dv)
-
+            vals, bins = np.histogram(self.X[i,:], bins=self.nx, range=(-self.x_max,self.x_max), density=False)
+            self.p1[:,i] = vals/(np.sum(vals)*self.dx)
 
     def forward(self):
 
-        self.V[0,:] = self.V_R
+        self.X[0,:] = self.x0
         noise = np.random.normal(loc=0.0,scale=1.0,size=(self.nsteps,self.trials))*np.sqrt(self.dt) #define noise process
         for i in range(1,self.nsteps):
             for j in range(self.trials):
-                self.V[i,j] = self.V[i-1,j] - self.dt*self.alpha*(self.V[i-1,j]) + self.sigma*noise[i,j]
+                self.X[i,j] = self.X[i-1,j] - self.dt*self.alpha*(self.X[i-1,j]) + self.sigma*noise[i,j]
 
-class NonStationaryOU:
+class OrnsteinUhlenbeckNS:
 
-    def __init__(self, T, dt, tau, stim, sigma, trials=1, xmin=0, xmax=1, dtype=np.float32):
+    def __init__(self, T, dt, tau, stim, sigma, x0=0, trials=1, xmin=0, xmax=1, dtype=np.float32):
 
         """
 
-        Monte-Carlo integration of a Langevin equation for
+        Monte-Carlo simulation of a Langevin equation for
         non-stationary white noise (an Ornstein Uhlenbeck Process)
 
         Parameters
@@ -202,11 +100,12 @@ class NonStationaryOU:
         self.stim = stim
         self.sigma = sigma
         self.trials = trials
+        self.x0 = x0
         self.xmin = xmin
         self.xmax = xmax
 
         #Arrays for simulation history
-        self.V = np.zeros((self.nsteps, self.trials))
+        self.X = np.zeros((self.nsteps, self.trials))
         self.P = []
 
     def forward(self):
@@ -214,48 +113,7 @@ class NonStationaryOU:
         noise = np.random.normal(loc=0.0,scale=1.0,size=(self.nsteps,self.trials))*np.sqrt(self.dt) #define noise process
         for i in range(1,self.nsteps):
             for j in range(self.trials):
-                self.V[i,j] = self.V[i-1,j] - self.dt*self.alpha*(self.V[i-1,j]) + self.stim[i] + self.sigma*noise[i,j]
-
-    def forward(self):
-
-        self.v[0,:] = self.v0
-
-        #generate noise and transpose to keep a consistent shape
-        self.eta = np.random.multivariate_normal(0, np.eye(), size=(self.nsteps,))
-        for i in range(self.trials):
-            j = 0
-            while j < self.nsteps:
-                if self.v[i,j-1] >= self.thr:
-                    self.v[i,j] = 50
-                    self.v[i,j+1] = 0
-                    j += 1 #skip a step
-                else:
-                    self.v[i,j] = self.v[i,j-1] - self.dt*self.v[i,j-1] + self.eta[i,j-1]
-                j += 1
-
-    def plot_mu(self):
-        fig, ax = plt.subplots()
-        ax.plot(np.arange(self.nsteps)*self.dt, self.stim, color='blue')
-
-    def plot_hist(self):
-
-        colormap = cm.get_cmap('coolwarm')
-        colors = colormap(np.linspace(0, 1, self.nsteps))
-        norm = mpl.colors.Normalize(vmin=0, vmax=self.nsteps)
-
-        fig, ax = plt.subplots()
-
-        for i in range(1, nsteps):
-            vals, bins = np.histogram(self.V[i,:], density=True)
-            ax.plot(bins[:-1], vals, color=colors[i])
-
-        ax.set_xlim([xmin, xmax])
-        ax.set_xlabel('V')
-        ax.set_ylabel('P(V)')
-
-        fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=colormap), label='Time')
-        plt.tight_layout()
-        plt.grid()
+                self.X[i,j] = self.X[i-1,j] - self.dt*self.alpha*(self.X[i-1,j]) + self.stim[i] + self.sigma*noise[i,j]
 
     def plot_trajectories(self):
 
@@ -266,14 +124,13 @@ class NonStationaryOU:
         fig, ax = plt.subplots()
 
         for i in range(self.trials):
-            ax.plot(self.V[:,i], color=colors[i], alpha=0.75)
+            ax.plot(self.X[:,i], color=colors[i], alpha=0.75)
 
         ax.set_xlabel('Time')
-        ax.set_ylabel('V')
+        ax.set_ylabel('X')
 
         plt.tight_layout()
         plt.grid()
-
 
 class Poisson:
 
@@ -326,53 +183,3 @@ class Poisson:
     def to_currents(self, J):
         self.currents = np.einsum('ij,jhk->ihk', J, self.spikes)
         return self.currents
-
-class CompoundPoisson:
-
-    def __init__(self, T, dt, J, trials=1, rates=None, dtype=np.float32):
-
-        """
-
-        Generate a compound Poisson process
-
-        Parameters
-        ----------
-
-        T: float
-            Total simulation time in seconds
-        dt: float
-            Time resolution in seconds
-        J : ndarray,
-            A vector of weights representing the weight of an event.
-            Requires a shape (N,)
-        trials : int
-            Number of stimulations to run
-        rates: ndarray,
-            A tensor of rates where rows are units and columns are time
-            Has shape (N,trials,nsteps) and should be constant on axis=1
-        dtype : numpy data type
-            Data type to use for neuron state variables
-
-        """
-
-        self.T = T
-        self.dt = dt
-        self.N = J.shape[0]
-        self.J = J
-        self.nsteps = 1 + int(round(T/dt))
-        self.trials = trials
-
-        self.rates = rates
-        if self.rates is None:
-            self.r0 = 20 #default rate (Hz)
-            self.rates = self.r0*np.ones((self.N, self.trials, self.nsteps))
-
-    def run_generator(self):
-
-        self.r = self.rates*self.dt
-        self.x = np.random.uniform(0,1,size=(self.N,self.trials,self.nsteps))
-        self.spikes = np.array(self.x < self.r, dtype=np.int32)
-
-        #sum over the first axis, weighting by J
-        self.current = np.einsum('i,ijk->jk', self.J, self.spikes)
-        return self.current

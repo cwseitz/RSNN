@@ -7,17 +7,26 @@ from hebb.util import *
 from hebb.models import *
 from matplotlib.ticker import FormatStrFormatter
 
-def fig_1():
-
+def fig_1(N,sigma,q):
 
     """
-    Generate a homogeneous gaussian network and plot the graph in spring format
+    Summarize the homogeneous gaussian network
+
+    Parameters
+    ----------
+    N : int
+        Number of neurons in the network. Must be a perfect square
+    sigma : ndarray
+        Standard deviation of the gaussian connectivity kernel
+    q : ndarray
+        Sparsity parameter
+
+    TODO: Add maps of the connectivity kernels for examples
+
     """
 
-    N = 100
     M = int(round(np.sqrt(N)))
-    #Define parameter maps
-    q = 0.1; sigma = 5*np.ones((M,M))
+    sigma = sigma*np.ones((M,M))
     net = GaussianNetwork(N, sigma, q)
     custom_lines = [Line2D([0],[0],color='salmon', lw=4),Line2D([0],[0],color='cornflowerblue', lw=4)]
 
@@ -29,7 +38,6 @@ def fig_1():
     ax3 = fig.add_subplot(gs[1, 2:3])
     ax4 = fig.add_subplot(gs[1, 3:4])
 
-    # add_spring_graph(ax0, net, alpha=0.03)
     add_ego_graph(ax0, net)
     ax0.legend(custom_lines, ['In', 'Out'], loc='upper right')
 
@@ -38,13 +46,13 @@ def fig_1():
     """
 
     sigmas = np.linspace(np.sqrt(N)/16, np.sqrt(N)/2, 100)
-    avg_arr, var_arr = hogn_out_deg_fixq(N, sigmas, 0.2)
+    avg_arr, var_arr = gauss_net_deg_fixq(N, sigmas, q)
     ax1.plot(sigmas, avg_arr, color='red')
     ax1.set_xlabel(r'$\sigma$')
     ax1.set_xticks([sigmas.min(), sigmas.max()])
     ax1.set_xticklabels([r'$\sqrt{N}/16$',r'$\sqrt{N}/2$'])
     ax1.set_ylabel(r'$\langle N_{ij} \rangle/N$')
-    ax1.set_title(r'$q=0.2$')
+    ax1.set_title(f'q={q}')
 
 
     """
@@ -52,7 +60,7 @@ def fig_1():
     """
 
     qs = np.linspace(0,1,100)
-    avg_arr, var_arr = hogn_out_deg_full(N, sigmas, qs)
+    avg_arr, var_arr = gauss_net_deg_full(N, sigmas, qs)
     ax2.imshow(avg_arr, cmap='coolwarm', origin='lower')
     ax2.set_xlabel(r'$\sigma$')
     ax2.set_xticks([0,100])
@@ -77,7 +85,7 @@ def fig_1():
     ax = [ax3,ax4]
     sigmas = np.array([np.sqrt(N)/8,np.sqrt(N)/2])
     for i, sigma in enumerate(sigmas):
-        avg_arr, var_arr = hogn_out_deg_fixsig(N, sigma, qs)
+        avg_arr, var_arr = gauss_net_deg_fixsig(N, sigma, qs)
         ax[i].plot(qs, avg_arr/N, color='blue')
         ax[i].set_xlabel(r'$q$')
         ax[i].set_ylabel(r'$\langle N_{ij} \rangle/N$')
@@ -100,51 +108,43 @@ def fig_1():
     ax4.plot(qs, n_ij_sig2/N, color='cyan', linestyle='--')
     plt.tight_layout()
 
-def fig_2():
+def fig_2(N,sigma,q):
 
 
     """
-    Statistics of shared connectivity in a homogeneous gaussian network
-    """
+    Shared connectivity in the homogeneous gaussian network
 
-    N = 900
-    sigma = 5
-    q = 0.5
+    TODO: Merge with the primary figure (fig_1)
+    """
 
     M = int(round(np.sqrt(N)))
     sigmat = sigma*np.ones((M,M))
     net = GaussianNetwork(N, sigmat, q)
-    dists, shared = net.get_shared_inputs()
-
-    unique = np.unique(dists)[1:]
-    avgs_arr = np.zeros_like(unique)
-    for i, val in enumerate(unique):
-        idx = np.where(dists == val)
-        avgs_arr[i] = np.mean(shared[idx])
-
-    #unique = np.linspace(0,np.sqrt(N)/2,100)
-    p_vec = hogn_shared(N, unique, sigma, q, delta=1)
+    unique, avgs_arr = gauss_net_shared_exp(net) #experimental solution
+    p_vec = gauss_net_shared(N, unique, sigma, q) #numerical solution
     plt.plot(unique, avgs_arr, color='red')
     plt.plot(unique, p_vec, color='blue')
 
-
-def fig_3():
+def fig_3(N=100,q=0.2,sigma_e=5,sigma_i=5,p_e=0.8):
 
 
     """
-    Generate a excitatory-inhibitory gaussian network with excitatory
-    and inhibitory bias parameters equal to one.
+    Summarize the excitatory-inhibitory gaussian network
 
-    This figure is for validating the numerical solution with the experiemental
+    Parameters
+    ----------
+    N : int, optional
+        Number of neurons in the network. Must be a perfect square
+    q : ndarray, optional
+        Sparsity parameter
+    sigma_e : float, optional
+        Standard deviation of the excitatory kernel
+    sigma_i : float, optional
+        Standard deviation of the inhibitory kernel
+
     """
 
-    N = 100
-    M = int(round(np.sqrt(N)))
-    q = 0.9
-    p_e = 0.5
-    sigma_e = 5; sigma_i = 5
-    bias_e = 1; bias_i = 1
-    net = ExInGaussianNetwork(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e=p_e)
+    net = ExInGaussianNetwork(N, sigma_e, sigma_i, q, p_e=p_e)
     custom_lines = [Line2D([0],[0],color='salmon', lw=4),Line2D([0],[0],color='cornflowerblue', lw=4)]
 
     fig = plt.figure(figsize=(12,4))
@@ -155,12 +155,9 @@ def fig_3():
     ax3 = fig.add_subplot(gs[1, 2:3])
     ax4 = fig.add_subplot(gs[1, 3:4])
     ax5 = fig.add_subplot(gs[0, 4:5])
-    #ax6 = fig.add_subplot(gs[0, 5:6])
-    ax7 = fig.add_subplot(gs[1, 4:5])
-    #ax8 = fig.add_subplot(gs[1, 5:6])
+    ax6 = fig.add_subplot(gs[1, 4:5])
 
     add_spring_graph(ax0, net)
-
 
     """
     Fix q, p_e, bias_e, and bias_i and generate maps of sigma_e vs sigma_i
@@ -170,14 +167,14 @@ def fig_3():
     sigmas = np.linspace(np.sqrt(N)/16,np.sqrt(N)/2,nsigma)
 
     n_ee_out, n_ee_in, n_ei_out, n_ei_in =\
-    exin_e_deg_fixqbias(N, sigmas, bias_e, bias_i, q, p_e)
+    exin_net_avg_edeg_fixq(N, sigmas, q, p_e)
     n_ee_out /= N*p_e
     n_ee_in /= N*p_e
     n_ei_out /= N*p_e
-    n_ei_in /= N*(1-p_e) #I -> E
+    n_ei_in /= N*(1-p_e)
 
     n_ii_out, n_ii_in, n_ie_out, n_ie_in =\
-    exin_i_deg_fixqbias(N, sigmas, bias_e, bias_i, q, p_e)
+    exin_net_avg_ideg_fixq(N, sigmas, q, p_e)
     n_ii_out /= N*(1-p_e)
     n_ii_in /= N*(1-p_e)
     n_ie_out /= N*(1-p_e)
@@ -206,7 +203,6 @@ def fig_3():
     ax3.set_ylabel(r'$\sigma_{E}$')
     ax3.set_ylabel(r'$\langle E_{out}^{E}\rangle$, $\langle E_{in}^{E}\rangle$')
 
-
     ax4.imshow(n_ei_out, origin='lower', cmap='coolwarm')
     ax4.set_xlabel(r'$\sigma_{I}$')
     ax4.set_ylabel(r'$\sigma_{E}$')
@@ -225,23 +221,7 @@ def fig_3():
     Generate several networks to test numerical predictions
     """
 
-    arr = []
-    xv, yv = np.meshgrid(np.arange(nsigma),np.arange(nsigma))
-    X, Y = xv.ravel(), yv.ravel()
-    sig_e_v, sig_i_v = np.meshgrid(sigmas,sigmas)
-    sigma_e, sigma_i = sig_e_v.ravel(), sig_i_v.ravel()
-    ee_mat = np.zeros((nsigma,nsigma))
-    ii_mat = np.zeros((nsigma,nsigma))
-    ei_mat = np.zeros((nsigma,nsigma))
-    ie_mat = np.zeros((nsigma,nsigma))
-    for i in range(sigma_e.shape[0]):
-        net = ExInGaussianNetwork(N, sigma_e[i], sigma_i[i], bias_e, bias_i, q, p_e=p_e, delta=1)
-        ei_avg, ie_avg, ee_avg, ii_avg = net.get_deg_avg()
-        ei_mat[X[i],Y[i]] = ei_avg/(N*(1-p_e))
-        ie_mat[X[i],Y[i]] = ie_avg/(N*p_e)
-        ee_mat[X[i],Y[i]] = ee_avg/(N*p_e)
-        ii_mat[X[i],Y[i]] = ii_avg/(N*(1-p_e))
-
+    ee_mat, ii_mat, ei_mat, ie_mat = exin_net_avg_deg_exp(N, sigmas, q, p_e)
     ax1.plot(np.mean(ii_mat,axis=0), color='blue')
     ax3.plot(np.mean(ee_mat,axis=1), color='blue')
 
@@ -259,29 +239,41 @@ def fig_3():
     map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
     plt.colorbar(map, ax=ax5, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{in}^{I}\rangle,\langle I_{out}^{E}\rangle$')
 
-    ax7.imshow(ei_mat, origin='lower', cmap='coolwarm')
-    ax7.set_xlabel(r'$\sigma_{I}$')
-    ax7.set_ylabel(r'$\sigma_{E}$')
-    ax7.set_xticks([0,nsigma])
-    ax7.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
-    ax7.set_yticks([0,nsigma])
-    ax7.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
-    ax7.xaxis.tick_top()
-    ax7.xaxis.set_label_position('top')
+    ax6.imshow(ei_mat, origin='lower', cmap='coolwarm')
+    ax6.set_xlabel(r'$\sigma_{I}$')
+    ax6.set_ylabel(r'$\sigma_{E}$')
+    ax6.set_xticks([0,nsigma])
+    ax6.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax6.set_yticks([0,nsigma])
+    ax6.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
+    ax6.xaxis.tick_top()
+    ax6.xaxis.set_label_position('top')
     colormap = cm.get_cmap('coolwarm')
     norm = mpl.colors.Normalize(vmin=0, vmax=ei_mat.max())
     map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
-    plt.colorbar(map, ax=ax7, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{out}^{I}\rangle,\langle I_{in}^{E}\rangle$')
+    plt.colorbar(map, ax=ax6, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{out}^{I}\rangle,\langle I_{in}^{E}\rangle$')
     plt.tight_layout()
 
-def fig_4():
+def fig_4(N=100, q1=0.2, q2=0.8, sigma_e=5, sigma_i=5, p_e=0.8):
 
 
     """
-    Generate a excitatory-inhibitory gaussian network with excitatory
-    and inhibitory bias parameters equal to one.
+    Summarize the excitatory-inhibitory gaussian network for two different
+    values of the sparsity parameter q
 
-    This figure is for validating the numerical solution with the experiemental
+    Parameters
+    ----------
+    N : int, optional
+        Number of neurons in the network. Must be a perfect square
+    q1 : ndarray, optional
+        Sparsity parameter 1
+    q2 : ndarray, optional
+        Sparsity parameter 2
+    sigma_e : float, optional
+        Standard deviation of the excitatory kernel
+    sigma_i : float, optional
+        Standard deviation of the inhibitory kernel
+
     """
 
     fig = plt.figure(figsize=(7,10))
@@ -316,16 +308,11 @@ def fig_4():
     ax11.spines['left'].set_visible(False)
     ax11.spines['bottom'].set_visible(False)
 
-    N = 100
-    M = int(round(np.sqrt(N)))
-    q = 0.1
-    p_e = 0.5
-    sigma_e = 5; sigma_i = 5
-    bias_e = 1; bias_i = 1
-    net = ExInGaussianNetwork(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e=p_e)
+
+    net = ExInGaussianNetwork(N, sigma_e, sigma_i, q1, p_e=p_e)
     custom_lines = [Line2D([0],[0],color='red', lw=4),Line2D([0],[0],color='cornflowerblue', lw=4)]
     add_spring_graph(ax0, net)
-    ax0.set_title(r'$q=0.1$')
+    ax0.set_title(f'$q={q1}$')
     ax0.legend(custom_lines, ['E', 'I'], loc='upper left')
 
 
@@ -337,14 +324,14 @@ def fig_4():
     sigmas = np.linspace(np.sqrt(N)/16,np.sqrt(N)/2,nsigma)
 
     n_ee_out, n_ee_in, n_ei_out, n_ei_in =\
-    exin_e_deg_fixqbias(N, sigmas, bias_e, bias_i, q, p_e)
+    exin_net_avg_edeg_fixq(N, sigmas, q1, p_e)
     n_ee_out /= N*p_e
     n_ee_in /= N*p_e
     n_ei_out /= N*p_e
-    n_ei_in /= N*(1-p_e) #I -> E
+    n_ei_in /= N*(1-p_e)
 
     n_ii_out, n_ii_in, n_ie_out, n_ie_in =\
-    exin_i_deg_fixqbias(N, sigmas, bias_e, bias_i, q, p_e)
+    exin_net_avg_ideg_fixq(N, sigmas, q1, p_e)
     n_ii_out /= N*(1-p_e)
     n_ii_in /= N*(1-p_e)
     n_ie_out /= N*(1-p_e)
@@ -362,7 +349,6 @@ def fig_4():
     ax2.set_yticks([0,nsigma])
     ax2.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'], fontsize=8)
     ax2.xaxis.tick_top()
-    #ax2.xaxis.set_label_position('top')
     colormap = cm.get_cmap('coolwarm')
     norm = mpl.colors.Normalize(vmin=0, vmax=n_ei_in.max())
     map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
@@ -382,22 +368,15 @@ def fig_4():
     ax4.set_yticks([0,nsigma])
     ax4.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'], fontsize=8)
     ax4.xaxis.tick_top()
-    #ax4.xaxis.set_label_position('top')
     colormap = cm.get_cmap('coolwarm')
     norm = mpl.colors.Normalize(vmin=0, vmax=n_ei_out.max())
     map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
     plt.colorbar(map, ax=ax4, fraction=0.046, pad=0.04, orientation='vertical', label=r'$\langle E_{out}^{I}\rangle,\langle I_{in}^{E}\rangle$')
 
-    N = 100
-    M = int(round(np.sqrt(N)))
-    q = 0.9
-    p_e = 0.5
-    sigma_e = 5; sigma_i = 5
-    bias_e = 1; bias_i = 1
-    net = ExInGaussianNetwork(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e=p_e)
+    net = ExInGaussianNetwork(N, sigma_e, sigma_i, q2, p_e=p_e)
     custom_lines = [Line2D([0],[0],color='red', lw=4),Line2D([0],[0],color='cornflowerblue', lw=4)]
     add_spring_graph(ax5, net)
-    ax5.set_title(r'$q=0.9$')
+    ax5.set_title(f'$q={q2}$')
     ax5.legend(custom_lines, ['E', 'I'], loc='upper left')
 
     """
@@ -408,14 +387,14 @@ def fig_4():
     sigmas = np.linspace(np.sqrt(N)/16,np.sqrt(N)/2,nsigma)
 
     n_ee_out, n_ee_in, n_ei_out, n_ei_in =\
-    exin_e_deg_fixqbias(N, sigmas, bias_e, bias_i, q, p_e)
+    exin_net_avg_edeg_fixq(N, sigmas, q2, p_e)
     n_ee_out /= N*p_e
     n_ee_in /= N*p_e
     n_ei_out /= N*p_e
-    n_ei_in /= N*(1-p_e) #I -> E
+    n_ei_in /= N*(1-p_e)
 
     n_ii_out, n_ii_in, n_ie_out, n_ie_in =\
-    exin_i_deg_fixqbias(N, sigmas, bias_e, bias_i, q, p_e)
+    exin_net_avg_ideg_fixq(N, sigmas, q2, p_e)
     n_ii_out /= N*(1-p_e)
     n_ii_in /= N*(1-p_e)
     n_ie_out /= N*(1-p_e)
@@ -433,7 +412,6 @@ def fig_4():
     ax7.set_yticks([0,nsigma])
     ax7.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'], fontsize=8)
     ax7.xaxis.tick_top()
-    #ax7.xaxis.set_label_position('top')
     colormap = cm.get_cmap('coolwarm')
     norm = mpl.colors.Normalize(vmin=0, vmax=n_ei_in.max())
     map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
@@ -453,67 +431,39 @@ def fig_4():
     ax9.set_yticks([0,nsigma])
     ax9.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'], fontsize=8)
     ax9.xaxis.tick_top()
-    #ax9.xaxis.set_label_position('top')
     colormap = cm.get_cmap('coolwarm')
     norm = mpl.colors.Normalize(vmin=0, vmax=n_ei_out.max())
     map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
     plt.colorbar(map, ax=ax9, fraction=0.046, pad=0.04, orientation='vertical', label=r'$\langle E_{out}^{I}\rangle,\langle I_{in}^{E}\rangle$')
 
+def fig_5(N=400, sigma_e=5, sigma_i=5, q=0.8, p_e=0.8):
 
-    # """
-    # Generate several networks to test numerical predictions
-    # """
-    #
-    # arr = []
-    # xv, yv = np.meshgrid(np.arange(nsigma),np.arange(nsigma))
-    # X, Y = xv.ravel(), yv.ravel()
-    # sig_e_v, sig_i_v = np.meshgrid(sigmas,sigmas)
-    # sigma_e, sigma_i = sig_e_v.ravel(), sig_i_v.ravel()
-    # ee_mat = np.zeros((nsigma,nsigma))
-    # ii_mat = np.zeros((nsigma,nsigma))
-    # ei_mat = np.zeros((nsigma,nsigma))
-    # ie_mat = np.zeros((nsigma,nsigma))
-    # for i in range(sigma_e.shape[0]):
-    #     net = ExInGaussianNetwork(N, sigma_e[i], sigma_i[i], bias_e, bias_i, q, p_e=p_e, delta=1)
-    #     ei_avg, ie_avg, ee_avg, ii_avg = net.get_deg_avg()
-    #     ei_mat[X[i],Y[i]] = ei_avg/(N*(1-p_e))
-    #     ie_mat[X[i],Y[i]] = ie_avg/(N*p_e)
-    #     ee_mat[X[i],Y[i]] = ee_avg/(N*p_e)
-    #     ii_mat[X[i],Y[i]] = ii_avg/(N*(1-p_e))
-    #
-    # ax1.plot(np.mean(ii_mat,axis=0), color='blue')
-    # ax3.plot(np.mean(ee_mat,axis=1), color='blue')
-    #
-    # ax5.imshow(ie_mat, origin='lower', cmap='coolwarm')
-    # ax5.set_xlabel(r'$\sigma_{I}$')
-    # ax5.set_ylabel(r'$\sigma_{E}$')
-    # ax5.set_xticks([0,nsigma])
-    # ax5.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
-    # ax5.set_yticks([0,nsigma])
-    # ax5.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
-    # ax5.xaxis.tick_top()
-    # ax5.xaxis.set_label_position('top')
-    # colormap = cm.get_cmap('coolwarm')
-    # norm = mpl.colors.Normalize(vmin=0, vmax=ie_mat.max())
-    # map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
-    # plt.colorbar(map, ax=ax5, fraction=0.046, pad=0.04, orientation='vertical', label=r'$\langle E_{in}^{I}\rangle,\langle I_{out}^{E}\rangle$')
-    #
-    # ax7.imshow(ei_mat, origin='lower', cmap='coolwarm')
-    # ax7.set_xlabel(r'$\sigma_{I}$')
-    # ax7.set_ylabel(r'$\sigma_{E}$')
-    # ax7.set_xticks([0,nsigma])
-    # ax7.set_xticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
-    # ax7.set_yticks([0,nsigma])
-    # ax7.set_yticklabels([r'$\sqrt{N}/16$', r'$\sqrt{N}/2$'])
-    # ax7.xaxis.tick_top()
-    # ax7.xaxis.set_label_position('top')
-    # colormap = cm.get_cmap('coolwarm')
-    # norm = mpl.colors.Normalize(vmin=0, vmax=ei_mat.max())
-    # map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
-    # plt.colorbar(map, ax=ax7, fraction=0.046, pad=0.04, orientation='horizontal', label=r'$\langle E_{out}^{I}\rangle,\langle I_{in}^{E}\rangle$')
-    # plt.tight_layout()
+    """
+    Shared connectivity in an excitatory-inhibitory gaussian network
 
-def fig_5(lif, net, spikes, focal=0):
+    Parameters
+    ----------
+    N : int, optional
+        Number of neurons in the network. Must be a perfect square
+    sigma_e : float, optional
+        Standard deviation of the excitatory kernel
+    sigma_i : float, optional
+        Standard deviation of the inhibitory kernel
+    q : ndarray, optional
+        Sparsity parameter
+
+    """
+
+    net = ExInGaussianNetwork(N, sigma_e, sigma_i, q, p_e=p_e)
+    fig, ax = plt.subplots()
+
+    ex_ex_dists, ex_ex_nshared = exin_net_shared_exp(net.C, net.ex_idx, net.ex_idx, net.M)
+    ex_in_dists, ex_in_nshared = exin_net_shared_exp(net.C, net.in_idx, net.ex_idx, net.M)
+
+    ax.plot(ex_ex_dists,ex_ex_nshared, color='red')
+    ax.plot(ex_in_dists,ex_in_nshared, color='blue')
+
+def fig_6(lif, net, spikes, focal=0):
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 10))
     ax.set_xticks([]); ax.set_yticks([])
@@ -536,49 +486,3 @@ def fig_5(lif, net, spikes, focal=0):
     add_unit_spikes(ax5, lif, unit=lif.no_clamp_idx[focal])
 
     plt.tight_layout()
-
-# def fig_4(N):
-#
-#     """
-#     Entropy of a homogeneous connectivity matrix
-#     """
-#
-#     M = int(round(np.sqrt(N)))
-#     mat = np.zeros((100,100))
-#     delta = 1
-#
-#     #get a vector of distances (which are the same for every neuron)
-#     xv, yv = np.meshgrid(np.arange(M),np.arange(M))
-#     X, Y = xv.ravel(), yv.ravel()
-#     d_vec = np.array([dist((0,0),(X[i],Y[i]),M,delta) for i in range(N)])[1:]
-#     sigmas = np.linspace(1, 100, 100)
-#
-#     for i, sigma in enumerate(sigmas):
-#         rho_max = sigma*np.sqrt(2*np.pi)*np.exp(delta**2/(2*sigma**2))
-#         rhos = np.linspace(0, rho_max*0.5, 100)
-#         for j, rho in enumerate(rhos):
-#             p_ij_vec, q_vec = kern(d_vec, sigma, rho)
-#             H_ij_vec = entropy(p_ij_vec, p_ij_vec, q_vec)
-#             H_total = 0.5*np.sum(H_ij_vec)
-#             mat[i,j] = H_total
-#
-#     fig, ax = plt.subplots(1,2, figsize=(7,3))
-#     colors = cm.coolwarm(np.linspace(0,1,100))
-#     for i in range(mat.shape[0]):
-#         ax[1].plot(mat[i,:], color=colors[i])
-#     ax[1].set_xticks([0,100])
-#     ax[1].set_xticklabels(['0', r'$\rho_{max}$'])
-#     ax[1].set_ylabel(r'$H_{\sigma}(\rho) \;\;\;[bits]$')
-#     norm = mpl.colors.Normalize(vmin=sigmas.min(), vmax=sigmas.max())
-#     map = mpl.cm.ScalarMappable(norm=norm, cmap='coolwarm')
-#     plt.colorbar(map, ax=ax[1], label=r'$\mathbf{\sigma}$', fraction=0.046, pad=0.04)
-#
-#     p_ij = np.linspace(0,1)
-#     p_ji = np.linspace(0,1)
-#     q = (1-p_ij)**2
-#     z = p_ij+p_ji+q
-#     ax[0].plot(p_ij, entropy(p_ij/z,p_ji/z,q/z), color='blue')
-#     ax[0].set_xlabel(r'$p_{ij}$')
-#     ax[0].set_ylabel(r'$H_{3}(p_{ij}) \;\;\; [bits]$')
-#     plt.tight_layout()
-#     plt.show()

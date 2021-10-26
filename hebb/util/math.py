@@ -1,63 +1,148 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
-def multi_gauss(r, mu, sigma):
+##################################################
+## Library of general purpose math functions
+##################################################
+## Author: Clayton Seitz
+## Copyright: 2021, The Hebb Project
+## Email: cwseitz@uchicago.edu
+##################################################
+
+def multi_gauss(X, mu, cov):
 
     """
-    A multivariate gaussian defined over a discrete space r
-    This is NOT a probability distribution and therefore is not normalized
+    A multivariate gaussian defined over a discrete space X
+    This is NOT a probability density function (PDF) unless you make it one
+    with the appropriate normalization
 
-    To make it a pdf the normalization constant is 1/np.sqrt((2*np.pi)**n * det)
+    Parameters
+    ----------
+    X : ndarray
+        The domain over which to evaluate the multivariate gaussian
+    mu : ndarray
+        A vector defining the central coordinate for the gaussian
+    cov : ndarray
+        Covariance tensor
 
     """
 
     n = mu.shape[0]
-    det = np.linalg.det(sigma)
-    inv = np.linalg.inv(sigma)
-    fac = np.einsum('...k,kl,...l->...', r-mu, inv, r-mu)
+    det = np.linalg.det(cov)
+    inv = np.linalg.inv(cov)
+    fac = np.einsum('...k,kl,...l->...', X-mu, inv, X-mu)
     return np.exp(-fac / 2)
 
-def prod_gauss(mu_1, sigma_1, mu_2, sigma_2):
+def multi_gauss_prod(mu_1, cov_1, mu_2, cov_2):
 
     """
-    Return the gaussian parameters of a product of multivariate gaussians
+    Returns the mu vector and covariance tensor for a multivariate
+    gaussian constructed as the product of two multivariate gaussians
+
+    Parameters
+    ----------
+    mu_1 : ndarray
+        Central coordinate of the first multi gaussian
+    cov_1 : ndarray
+        Covariance tensor of the first multi gaussian
+    mu_2 : ndarray
+        Central coordinate of the second multi gaussian
+    cov_2 : ndarray
+        Covariance tensor of the second multi gaussian
+
     """
 
-    mu_3 = sigma_2 @ np.linalg.inv(sigma_1+sigma_2) @ mu_1 +\
-           sigma_1 @ np.linalg.inv(sigma_1+sigma_2) @ mu_2
+    mu_3 = cov_2 @ np.linalg.inv(cov_1+cov_2) @ mu_1 +\
+           cov_1 @ np.linalg.inv(cov_1+cov_2) @ mu_2
 
-    sigma_3 = sigma_1 @ np.linalg.inv(sigma_1+sigma_2) @ sigma_2
+    cov_3 = cov_1 @ np.linalg.inv(cov_1+cov_2) @ cov_2
 
-    return mu_3, sigma_3
-
-def gauss(N, x0, y0, sigma, delta=1):
-
-    """
-    Return a gaussian function centered at (x0,y0) sampled on a grid with
-    periodic boundary conditions
-    """
-
-    M = int(round(np.sqrt(N)))
-    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
-    X, Y = xv.ravel(), yv.ravel()
-    Z = np.exp(-0.5*torus_dist_vec(M,x0,y0,X*delta,Y*delta)**2/sigma**2)
-    Z = Z.reshape((M,M))
-
-    return Z
+    return mu_3, cov_3
 
 def delta_gauss(dx, sigma, delta):
 
     """
     Return the value of a gaussian a distance dx from the mean
+    Useful when only a single sample is needed rather than the entire function
+
+    Parameters
+    ----------
+    dx : float
+        Distance from the center
+    sigma : float
+        Standard deviation of the gaussian
+    delta : float
+        Grid spacing
+
+    Returns
+    --------
+    val : float
+        Value of the gaussian a distance dx from the center
+
     """
 
     dx *= delta
-    return np.exp((-0.5*dx**2)/sigma**2)
+    val = np.exp((-0.5*dx**2)/sigma**2)
+    return val
 
-def torus_dist_vec(M, x0, y0, X, Y, delta=1):
+def torgauss(N, x0, y0, sigma, delta=1):
 
     """
-    A vectorized version of the normal torus_dist function
+    Return a symmetric gaussian function centered at (x0,y0) sampled on a
+    two-dimensional grid with periodic boundary conditions (a torus)
+
+    Parameters
+    ----------
+    N : int
+        Total number of grid points
+    x0 : float
+        X-coordinate of the center of the gaussian
+    y0 : float
+        Y-coordinate of the center of the gaussian
+    sigma : ndarray
+        Standard deviation of the gaussian
+
+    Returns
+    --------
+    Z : ndarray
+        A two-dimensional gaussian with shape (sqrt(N),sqrt(N))
+
+    """
+
+
+    M = int(round(np.sqrt(N)))
+    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
+    X, Y = xv.ravel(), yv.ravel()
+    Z = np.exp(-0.5*tordistv(M,x0,y0,X*delta,Y*delta)**2/sigma**2)
+    Z = Z.reshape((M,M))
+
+    return Z
+
+def tordistv(M, x0, y0, X, Y, delta=1):
+
+    """
+    A vectorized version of the tordist function
+
+    Evaluates the Euclidean distance between two points on a discrete
+    torus (a 2D lattice with periodic boundary conditions)
+
+    Parameters
+    ----------
+    M : int
+        The number of grid points along an axis
+    x0 : float
+        X-coordinate of the center of the gaussian
+    y0 : float
+        Y-coordinate of the center of the gaussian
+    X : ndarray
+        X-coordinates of points to calculate distance
+    Y : ndarray
+        Y-coordinates of points to calculate distance
+
+    Returns
+    --------
+    dr : ndarray, (M**2,)
+        Euclidean distances between points (X,Y) and (x0,y0)
+
     """
 
     dx = np.minimum(np.abs(X-x0),M*delta-np.abs(X-x0))
@@ -65,40 +150,30 @@ def torus_dist_vec(M, x0, y0, X, Y, delta=1):
     dr = np.sqrt(dx**2 + dy**2)
     return dr
 
-def trinomial(k_ij, k_ji, q):
+def tordist(r_i, r_j, M, delta):
 
     """
-    Draw a sample from a trinomial distribution to generate synapses.
-    Inputs k_ij, k_ji, q should be binomial probabilities in [0,1]
-    """
-    p_ij, p_ji, p_x = _trinomial(k_ij, k_ji, q)
-    x = np.random.uniform(0,1)
-    if x <= p_ij:
-        out = -1
-    elif p_ij < x <= p_ij+p_ji:
-        out = 1
-    elif x > p_ij+p_ji:
-        out = 0
-    return out
+    A vectorized version of the tordist function
 
-def _trinomial(k_ij, k_ji, q):
-
-    p_ij = k_ij*(1-k_ji)*(1-q)
-    p_ji = k_ji*(1-k_ij)*(1-q)
-    p_x = q*(1-k_ij)*(1-k_ji)
-    z_ij = p_ij + p_ji + p_x
-    p_ij = np.divide(p_ij, z_ij, out=np.zeros_like(p_ij), where=z_ij!=0)
-    p_ji = np.divide(p_ji, z_ij, out=np.zeros_like(p_ji), where=z_ij!=0)
-    p_x = np.divide(p_x, z_ij, out=np.zeros_like(p_x), where=z_ij!=0)
-
-    return p_ij, p_ji, p_x
-
-
-def torus_dist(r_i, r_j, M, delta):
-
-    """
-    Evaluate the Euclidean distance between two points on a discrete
+    Evaluates the Euclidean distance between two points on a discrete
     torus (a 2D lattice with periodic boundary conditions)
+
+    Parameters
+    ----------
+    r_i : tuple,
+        Coordinate pair for position i
+    r_j : tuple,
+        Coordinate pair for position j
+    M : int,
+        The number of grid points along an axis
+    delta : float,
+        Grid spacing
+
+    Returns
+    --------
+    dr : float,
+        Euclidean distances between points r_i and r_j
+
     """
 
     x1, y1 = r_i; x2, y2 = r_j
@@ -107,233 +182,88 @@ def torus_dist(r_i, r_j, M, delta):
     dr = np.sqrt(dx**2 + dy**2)
     return dr
 
+
+def sample_trinomial(a,b,c):
+
+    """
+    Draw a sample from a trinomial distribution (a categorical distribution
+    with three possibilities a,b,c. Inputs a,b,c should be binomial
+    probabilities in [0,1]
+
+    Parameters
+    ----------
+    a : float,
+        Binomial probability of category a being observed
+    b : float,
+        Binomial probability of category b being observed
+    c : float,
+        Binomial probability of category c being observed
+
+    Returns
+    --------
+    out : int,
+        A sample from the trinomial distribution encoded as
+        (a,b,c) = (-1,1,0)
+
+    """
+
+    p_a, p_b, p_c = trinomial(a,b,c)
+    x = np.random.uniform(0,1)
+    if x <= p_a:
+        out = -1
+    elif p_a < x <= p_a+p_b:
+        out = 1
+    elif x > p_a+p_b:
+        out = 0
+    return out
+
+def trinomial(a,b,c):
+
+    """
+    Construct the trinomial distribution from three binomial probabilities
+    provided by the user
+
+    Parameters
+    ----------
+    a : float,
+        Binomial probability of category a being observed
+    b : float,
+        Binomial probability of category b being observed
+    c : float,
+        Binomial probability of category c being observed
+
+    Returns
+    --------
+    out : int,
+        Probabilities of each of the categories
+
+    """
+
+    p_a = a*(1-b)*(1-c)
+    p_b = b*(1-a)*(1-c)
+    p_c = c*(1-a)*(1-b)
+    z = p_a + p_b + p_c
+    p_a = np.divide(p_a, z, out=np.zeros_like(p_a), where=z!=0)
+    p_b = np.divide(p_b, z, out=np.zeros_like(p_b), where=z!=0)
+    p_c = np.divide(p_c, z, out=np.zeros_like(p_c), where=z!=0)
+    return p_a, p_b, p_c
+
+
 def entropy(p):
 
     """
     Compute the entropy of a probability distribution p
+
+    Parameters
+    ----------
+    p : ndarray,
+        Probability distribution
+
+    Returns
+    --------
+    H : float,
+        Entropy of p expressed in units of bits
     """
 
-    return np.sum(p*np.log2(1/p))
-
-def hogn_avg_out_deg(N, sigma, boost, q, delta, x0=0, y0=0):
-
-    """
-    Average out degree of a homogeneous gaussian network for a given
-    value of sigma, bias, and q params
-    """
-
-    M = int(round(np.sqrt(N)))
-    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
-    X, Y = xv.ravel(), yv.ravel()
-    dr_ij_vec = np.array([torus_dist((0,0),(X[i],Y[i]),M,delta) for i in range(N)])[1:]
-    p_vec = np.zeros_like(dr_ij_vec)
-    for i, dr_ij in enumerate(dr_ij_vec):
-        k_ij = boost*delta_gauss(dr_ij, sigma, delta)
-        p_ij, p_ji, q  = _trinomial(k_ij, k_ij, q)
-        p_vec[i] = p_ij
-    return np.sum(p_vec)
-
-def hogn_var_out_deg(N, sigma, boost, q, delta, x0=0, y0=0):
-
-    """
-    Average out degree of a homogeneous gaussian network for a given
-    value of sigma and boost params
-    """
-
-    M = int(round(np.sqrt(N)))
-    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
-    X, Y = xv.ravel(), yv.ravel()
-    dr_ij_vec = np.array([torus_dist((0,0),(X[i],Y[i]),M,delta) for i in range(N)])[1:]
-    p_vec = np.zeros_like(dr_ij_vec)
-    for i, dr_ij in enumerate(dr_ij_vec):
-        k_ij = boost*delta_gauss(dr_ij, sigma, delta)
-        p_ij, p_ji, q  = _trinomial(k_ij, k_ij, q)
-        p_vec[i] = p_ij*(1-p_ij)
-
-    return np.sum(p_vec)
-
-def hogn_out_deg_fixsig(N, sigma, qs, bias=1, delta=1):
-
-    """
-    First two moments of the out the degree distribution for fixed
-    sigma, varying the bias and sparsity parameters
-
-    Will compute suitable values for the bias parameter based on sigma.
-    """
-
-    avg_arr = np.zeros((len(qs),))
-    var_arr = np.zeros((len(qs),))
-    for i,q in enumerate(qs):
-        avg_arr[i] = hogn_avg_out_deg(N, sigma, bias, q, delta)
-        var_arr[i] = hogn_var_out_deg(N, sigma, bias, q, delta)
-    return avg_arr, var_arr
-
-def hogn_out_deg_fixq(N, sigmas, q, bias=1, delta=1):
-
-    """
-    First two moments of the out degree distribution for fixed
-    sparsity parameter, varying the reach (sigma) parameter
-    """
-
-    avg_arr = np.zeros((len(sigmas),))
-    var_arr = np.zeros((len(sigmas),))
-    for i,sigma in enumerate(sigmas):
-        avg_arr[i] = hogn_avg_out_deg(N, sigma, bias, q, delta)
-        var_arr[i] = hogn_var_out_deg(N, sigma, bias, q, delta)
-    return avg_arr, var_arr
-
-
-def hogn_out_deg_full(N, sigmas, qs, bias=1, delta=1):
-
-    """
-    Mean of the out the degree distribution over the entire parameter space
-    for the homogeneous gaussian network (sigma, q)
-    """
-
-    avg_arr = np.zeros((len(qs),len(sigmas)))
-    var_arr = np.zeros((len(qs),len(sigmas)))
-    for i,q in enumerate(qs):
-        for j, sigma in enumerate(sigmas):
-            avg_arr[i,j] = hogn_avg_out_deg(N, sigma, bias, q, delta)
-            var_arr[i,j] = hogn_var_out_deg(N, sigma, bias, q, delta)
-    return avg_arr, var_arr
-
-def exin_avg_e_deg(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e, delta=1):
-
-    """
-    Average number of excitatory connections and inhibitory connections coming
-    into and going out of an excitatory neuron
-    """
-
-    p_i = 1-p_e
-    M = int(round(np.sqrt(N)))
-    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
-    X, Y = xv.ravel(), yv.ravel()
-    dr_ij_vec = np.array([torus_dist((0,0),(X[i],Y[i]),M,delta) for i in range(N)])[1:]
-    p_ee_in_vec = np.zeros_like(dr_ij_vec)
-    p_ee_out_vec = np.zeros_like(dr_ij_vec)
-    p_ei_in_vec = np.zeros_like(dr_ij_vec)
-    p_ei_out_vec = np.zeros_like(dr_ij_vec)
-
-    for i, dr_ij in enumerate(dr_ij_vec):
-        k_ex_out = bias_e*delta_gauss(dr_ij, sigma_e, delta)
-        k_inh_in = bias_i*delta_gauss(dr_ij, sigma_i, delta)
-        p_ee_out, p_ee_in, q  = _trinomial(k_ex_out, k_ex_out, q)
-        p_ei_out, p_ei_in, q  = _trinomial(k_ex_out, k_inh_in, q)
-        p_ee_in_vec[i] = p_ee_in #E <- E
-        p_ee_out_vec[i] = p_ee_out #E -> E
-        p_ei_in_vec[i] = p_ei_in #E <- I
-        p_ei_out_vec[i] = p_ei_out #E -> I
-
-    avg_ee_in = np.sum(p_ee_in_vec*p_e)
-    avg_ee_out = np.sum(p_ee_out_vec*p_e)
-    avg_ei_in = np.sum(p_ei_in_vec*p_i)
-    avg_ei_out = np.sum(p_ei_out_vec*p_e)
-
-    return avg_ee_out, avg_ee_in, avg_ei_out, avg_ei_in
-
-def exin_avg_i_deg(N, sigma_e, sigma_i, bias_e, bias_i, q, p_e, delta=1):
-
-    """
-    Average number of excitatory connections and inhibitory connections coming
-    into and going out of an excitatory neuron
-    """
-
-    p_i = 1-p_e
-    M = int(round(np.sqrt(N)))
-    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
-    X, Y = xv.ravel(), yv.ravel()
-    dr_ij_vec = np.array([torus_dist((0,0),(X[i],Y[i]),M,delta) for i in range(N)])[1:]
-    p_ii_in_vec = np.zeros_like(dr_ij_vec)
-    p_ii_out_vec = np.zeros_like(dr_ij_vec)
-    p_ie_in_vec = np.zeros_like(dr_ij_vec)
-    p_ie_out_vec = np.zeros_like(dr_ij_vec)
-
-    for i, dr_ij in enumerate(dr_ij_vec):
-        k_inh_out = bias_i*delta_gauss(dr_ij, sigma_i, delta)
-        k_ex_in = bias_e*delta_gauss(dr_ij, sigma_e, delta)
-        p_ii_out, p_ii_in, q  = _trinomial(k_inh_out, k_inh_out, q)
-        p_ie_out, p_ie_in, q  = _trinomial(k_inh_out, k_ex_in, q)
-        p_ii_in_vec[i] = p_ii_in #I <- I
-        p_ii_out_vec[i] = p_ii_out #I -> I
-        p_ie_in_vec[i] = p_ie_in #I <- E
-        p_ie_out_vec[i] = p_ie_out #I -> E
-
-    avg_ii_in = np.sum(p_ii_in_vec*p_i)
-    avg_ii_out = np.sum(p_ii_out_vec*p_i)
-    avg_ie_in = np.sum(p_ie_in_vec*p_e)
-    avg_ie_out = np.sum(p_ie_out_vec*p_i)
-
-    return avg_ii_out, avg_ii_in, avg_ie_out, avg_ie_in
-
-def exin_e_deg_fixqbias(N, sigmas, bias_e, bias_i, q, p_e, delta=1):
-
-    """
-    Average in and out degree of an excitatory neuron and an inhibitory neuron
-    in an excitatory-inhibitory gaussian network
-    """
-
-    nsigma = sigmas.shape[0]
-    xv, yv = np.meshgrid(np.arange(nsigma),np.arange(nsigma))
-    X, Y = xv.ravel(), yv.ravel()
-
-    sig_e_v, sig_i_v = np.meshgrid(sigmas,sigmas)
-    sigma_e, sigma_i = sig_e_v.ravel(), sig_i_v.ravel()
-    n_ee_out = np.zeros((nsigma,nsigma))
-    n_ee_in = np.zeros((nsigma,nsigma))
-    n_ei_out = np.zeros((nsigma,nsigma))
-    n_ei_in = np.zeros((nsigma,nsigma))
-    for i in range(sigma_e.shape[0]):
-        avg_ee_out, avg_ee_in, avg_ei_out, avg_ei_in =\
-        exin_avg_e_deg(N, sigma_e[i], sigma_i[i], bias_e, bias_i, q, p_e)
-        n_ee_out[X[i],Y[i]] = avg_ee_out
-        n_ee_in[X[i],Y[i]] = avg_ee_in
-        n_ei_out[X[i],Y[i]] = avg_ei_out
-        n_ei_in[X[i],Y[i]] = avg_ei_in
-    return n_ee_out, n_ee_in, n_ei_out, n_ei_in
-
-def exin_i_deg_fixqbias(N, sigmas, bias_e, bias_i, q, p_e, delta=1):
-
-    """
-    Average in and out degree of an excitatory neuron and an inhibitory neuron
-    in an excitatory-inhibitory gaussian network
-    """
-
-    nsigma = sigmas.shape[0]
-    xv, yv = np.meshgrid(np.arange(nsigma),np.arange(nsigma))
-    X, Y = xv.ravel(), yv.ravel()
-
-    sig_e_v, sig_i_v = np.meshgrid(sigmas,sigmas)
-    sigma_e, sigma_i = sig_e_v.ravel(), sig_i_v.ravel()
-    n_ii_out = np.zeros((nsigma,nsigma))
-    n_ii_in = np.zeros((nsigma,nsigma))
-    n_ie_out = np.zeros((nsigma,nsigma))
-    n_ie_in = np.zeros((nsigma,nsigma))
-    for i in range(sigma_e.shape[0]):
-        avg_ii_out, avg_ii_in, avg_ie_out, avg_ie_in =\
-        exin_avg_i_deg(N, sigma_e[i], sigma_i[i], bias_e, bias_i, q, p_e)
-        n_ii_out[X[i],Y[i]] = avg_ii_out
-        n_ii_in[X[i],Y[i]] = avg_ii_in
-        n_ie_out[X[i],Y[i]] = avg_ie_out
-        n_ie_in[X[i],Y[i]] = avg_ie_in
-    return n_ii_out, n_ii_in, n_ie_out, n_ie_in
-
-def hogn_shared(N, dr_ij_vec, sigma, q, delta=1):
-
-    """
-    Find the average number of shared outputs (or inputs) as a function of distance
-    between two neurons in a homogeneous gaussian network
-    """
-
-    M = int(round(np.sqrt(N)))
-    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
-    X, Y = xv.ravel(), yv.ravel()
-    p_vec = np.zeros_like(dr_ij_vec)
-    for i, dr_ij in enumerate(dr_ij_vec):
-        k_ij_1 = gauss(N, 0, 0, sigma, delta)
-        #Move the second neuron along the diagonal to minimize 'bleed over' from pbc
-        k_ij_2 = gauss(N, dr_ij/np.sqrt(2), dr_ij/np.sqrt(2), sigma, delta)
-        p_ij_1, p_ji_1, p_x_1 = _trinomial(k_ij_1, k_ij_1, q)
-        p_ij_2, p_ji_2, p_x_2 = _trinomial(k_ij_2, k_ij_2, q)
-        p_vec[i] = np.sum(p_ij_1*p_ij_2)
-    return p_vec
+    H = np.sum(p*np.log2(1/p))
+    return H

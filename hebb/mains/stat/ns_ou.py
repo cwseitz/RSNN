@@ -20,7 +20,7 @@ stim = 0.01*np.sin(2*np.pi*freq*np.arange(0,T,dt))**2
 sigma = 1.0
 trials = 3
 
-ou = NonStationaryOU(T, dt, tau, stim, sigma, trials=trials, xmin=0, xmax=2)
+ou = OrnsteinUhlenbeckNS(T, dt, tau, stim, sigma, trials=trials, xmin=0, xmax=2)
 ou.forward()
 
 ou.plot_trajectories()
