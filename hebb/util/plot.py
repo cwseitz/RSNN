@@ -161,8 +161,33 @@ def add_activity(ax, spikes, trial=0, color='red'):
     ax.plot(np.sum(spikes[:,trial,:], axis=0), color=color)
 
 """
-Visualizing connectivity as graphs (networks)
+Visualizing connectivity
 """
+
+def add_kernel_pair(ax1, ax2, N, sigma, q=0.8):
+
+    """
+    Draw a pair of connectivity kernels converted to probabilities and
+    the product of their probabilities
+
+    Parameters
+    ----------
+    ax : object,
+        matplotlib axis object
+    net : object,
+        network object
+    alpha : float, optional
+        transparency param
+    """
+
+    x1, y1 = np.sqrt(N)/2, np.sqrt(N)/4
+    x2, y2 = np.sqrt(N)/2, 3*np.sqrt(N)/4
+    k_ij = torgauss(N, x1, y1, sigma, delta=1)
+    k_ji = torgauss(N, x2, y2, sigma, delta=1)
+    p_ij, p_ji, p_x = trinomial(k_ij,k_ji,q)
+    ax1.imshow(p_ij+p_ji, cmap='coolwarm')
+    ax2.imshow(p_ij*p_ji, cmap='coolwarm')
+
 
 def add_ego_graph(ax, net, alpha=0.5):
 
@@ -189,10 +214,10 @@ def add_ego_graph(ax, net, alpha=0.5):
     G.add_node(hub)
     for neighbor in inedges:
         G.add_node(neighbor[0])
-        G.add_edge(*neighbor, color='salmon')
+        G.add_edge(*neighbor, color='red')
     for neighbor in outedges:
         G.add_node(neighbor[1])
-        G.add_edge(*neighbor, color='cornflowerblue')
+        G.add_edge(*neighbor, color='dodgerblue')
     pos = nx.spring_layout(G)
     edges = G.edges()
     colors = [G[u][v]['color'] for u,v in edges]
@@ -220,7 +245,7 @@ def add_spectral_graph(ax, net, alpha=0.05, arrows=False):
     pos = nx.spectral_layout(G)
     colors = []
     for n in G.nodes():
-        colors.append('cornflowerblue')
+        colors.append('dodgerblue')
     nx.draw_networkx_nodes(G, pos, ax=ax, node_color=colors, node_size=20, node_shape='x')
     nx.draw_networkx_edges(G, pos, ax=ax, edge_color='black', alpha=alpha, arrows=arrows, arrowsize=10)
 
@@ -250,7 +275,7 @@ def add_spring_graph(ax, net, alpha=0.05, arrows=False):
             if n in net.ex_idx:
                 colors.append('red')
             else:
-                colors.append('cornflowerblue')
+                colors.append('dodgerblue')
         except:
             colors.append('red')
     nx.draw_networkx_nodes(G, pos, ax=ax, node_color=colors, node_size=20, node_shape='x')
