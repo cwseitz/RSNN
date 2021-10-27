@@ -13,5 +13,5 @@ from hebb.models import *
 ## Email: cwseitz@uchicago.edu
 ##################################################
 
-fig_3()
+fig_0()
 plt.show()
