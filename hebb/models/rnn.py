@@ -75,11 +75,11 @@ class RNN:
         self.dtype = dtype #data type
         self.shape = (self.N,self.trials,self.nsteps)
 
-class ClampedLIF_RNN(RNN):
+class ClampedLIF(RNN):
 
     def __init__(self,  T, dt, tau_ref, J, trials=1, tau=0.02, g_l=8.75, thr=20, dtype=np.float32):
 
-        super(ClampedLIF_RNN, self).__init__(T, dt, tau_ref, J=J, trials=trials, dtype=dtype)
+        super(ClampedLIF, self).__init__(T, dt, tau_ref, J=J, trials=trials, dtype=dtype)
 
         """
 
@@ -169,11 +169,11 @@ class ClampedLIF_RNN(RNN):
             #Enforce refractory period
             self.V[:,:,i] = self.V[:,:,i] - self.V[:,:,i]*self.R[:,:,i+self.ref_steps]
 
-class LIF_RNN(RNN):
+class LIF(RNN):
 
     def __init__(self,  T, dt, tau_ref, J, trials=1, tau=0.02, g_l=20, thr=20, dtype=np.float32):
 
-        super(LIF_RNN, self).__init__(T, dt, tau_ref, J=J, trials=trials, dtype=dtype)
+        super(LIF, self).__init__(T, dt, tau_ref, J=J, trials=trials, dtype=dtype)
 
         """
         Basic Leaky Integrate & Fire (LIF) neuron model. For use when the

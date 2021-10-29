@@ -123,6 +123,16 @@ class ExInGaussianNetwork:
             elif syn == -1:
                 self.C[j,i] = 1
 
+    def make_weighted(self, J_ee, J_ei, J_ie, J_ii):
+
+        ex_vec = np.zeros((self.N,)); ex_vec[self.ex_idx] = 1
+        in_vec = np.zeros((self.N,)); in_vec[self.in_idx] = 1
+        C_ee = np.einsum('i,ij->ij',in_vec,np.einsum('i,ji->ji',ex_vec,self.C))
+        C_ei = np.einsum('i,ij->ij',ex_vec,np.einsum('i,ji->ji',ex_vec,self.C))
+        C_ie = np.einsum('i,ij->ij',in_vec,np.einsum('i,ji->ji',in_vec,self.C))
+        C_ii = np.einsum('i,ij->ij',ex_vec,np.einsum('i,ji->ji',in_vec,self.C))
+        self.C = J_ee*C_ee + J_ei*C_ei + J_ie*C_ie + J_ii*C_ii
+
 
 class FractalNetwork:
 

@@ -15,7 +15,7 @@ from .math import *
 ##################################################
 
 """
-Neuron state variables
+Neuron state variables in time
 """
 
 def add_unit_voltage(ax, rnn, unit=0, trial=0):
@@ -56,9 +56,9 @@ def add_unit_current(ax, rnn, unit=0, trial=0):
         index of trial to plot
     """
 
-    ax.plot(cell.V[unit,trial,:], 'k')
-    xmin, xmax = 0, cell.nsteps
-    ax.hlines(cell.thr, xmin, xmax, color='red')
+    ax.plot(rnn.V[unit,trial,:], 'k')
+    xmin, xmax = 0, rnn.nsteps
+    ax.hlines(rnn.thr, xmin, xmax, color='red')
     ax.hlines(0, xmin, xmax, color='blue')
     ax.grid(which='both')
     ax.set_ylabel('$\mathbf{V}\; [\mathrm{mV}]$')
@@ -106,7 +106,7 @@ def add_unit_refrac(ax, rnn, unit=0, trial=0):
     ax.set_xlabel('t (ms)')
     ax.set_ylabel('$\mathbf{R}(t)$')
 
-def add_raster(ax, spikes, focal=None, trial=0, n_units=50):
+def add_raster(ax, spikes, trial=0, n_units=50):
 
     """
     Generate a raster plot by randomly selecting 'n_units'
@@ -136,10 +136,7 @@ def add_raster(ax, spikes, focal=None, trial=0, n_units=50):
         spike_times = np.argwhere(spikes[unit,trial,:] > 0)
         spike_times = spike_times.reshape((spike_times.shape[0],))
         arr.append(spike_times)
-        if focal is None:
-            focal = n_units + 1
-            colors = ['black' if i != focal else 'red' for i in range(n_units)]
-            ax.eventplot(arr, colors='black', lineoffsets=1, linelengths=1)
+        ax.eventplot(arr, colors='black', orientation='horizontal', lineoffsets=1, linelengths=1)
 
 def add_activity(ax, spikes, trial=0, color='red'):
 
@@ -159,6 +156,26 @@ def add_activity(ax, spikes, trial=0, color='red'):
     """
 
     ax.plot(np.sum(spikes[:,trial,:], axis=0), color=color)
+
+"""
+Distributions of state variables
+"""
+
+def add_input_hist(ax, rnn, unit=0, nbins=20, di=0.02):
+
+    """
+    Compute the histogram of current values for a single neuron over
+    trials, as a function of time i.e. P(I,t)
+    The vector over which P is calculated has shape (1, trials, 1)
+    """
+
+    bins = np.linspace(0,1,nbins)
+    colors = cm.coolwarm(np.linspace(0,1,rnn.nsteps))
+    for t in range(rnn.nsteps):
+        vals, bins = np.histogram(rnn.I[unit,:,t], bins=bins)
+        vals = vals/(np.sum(vals)*di)
+        ax.plot(bins[:-1], vals, color=colors[t])
+
 
 """
 Visualizing connectivity
@@ -187,7 +204,6 @@ def add_kernel_pair(ax1, ax2, N, sigma, q=0.8):
     p_ij, p_ji, p_x = trinomial(k_ij,k_ji,q)
     ax1.imshow(p_ij+p_ji, cmap='coolwarm')
     ax2.imshow(p_ij*p_ji, cmap='coolwarm')
-
 
 def add_ego_graph(ax, net, alpha=0.5):
 
@@ -240,8 +256,10 @@ def add_spectral_graph(ax, net, alpha=0.05, arrows=False):
         whether or not to draw the direction of an edge via arrows
     """
 
+    C = np.zeros_like(net.C)
+    C[np.nonzero(net.C)] = 1
     if arrows: arrows = True
-    G = nx.convert_matrix.from_numpy_array(net.C, create_using=nx.DiGraph)
+    G = nx.convert_matrix.from_numpy_array(nC, create_using=nx.DiGraph)
     pos = nx.spectral_layout(G)
     colors = []
     for n in G.nodes():
@@ -266,8 +284,10 @@ def add_spring_graph(ax, net, alpha=0.05, arrows=False):
         whether or not to draw the direction of an edge via arrows
     """
 
+    C = np.zeros_like(net.C)
+    C[np.nonzero(net.C)] = 1
     if arrows: arrows = True
-    G = nx.convert_matrix.from_numpy_array(net.C, create_using=nx.DiGraph)
+    G = nx.convert_matrix.from_numpy_array(C, create_using=nx.DiGraph)
     pos = nx.spring_layout(G)
     colors = []
     for n in G.nodes():

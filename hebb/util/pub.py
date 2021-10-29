@@ -488,7 +488,7 @@ def fig_4(N=400, sigma_e=5, sigma_i=5, q=0.8, p_e=0.8):
     ax.plot(ex_ex_dists,ex_ex_nshared, color='red')
     ax.plot(ex_in_dists,ex_in_nshared, color='blue')
 
-def fig_5(lif, net, spikes, focal=0):
+def fig_5(rnn, net, focal=0):
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 10))
     ax.set_xticks([]); ax.set_yticks([])
@@ -503,11 +503,17 @@ def fig_5(lif, net, spikes, focal=0):
     ax4 = ax.inset_axes([0, 0.2, 1, 0.15])
     ax5 = ax.inset_axes([0, 0, 1, 0.15])
 
-    add_spectral_graph(ax0, net.CIJ, net.in_idx)
-    add_raster(ax1, spikes, n_units=100)
-    add_activity(ax2, spikes)
-    add_unit_voltage(ax3, lif, unit=focal)
-    add_unit_current(ax4, lif, unit=focal)
-    add_unit_spikes(ax5, lif, unit=lif.no_clamp_idx[focal])
+    add_spring_graph(ax0, net)
+    add_raster(ax1, rnn.Z, n_units=100)
+    add_activity(ax2, rnn.Z)
+    add_unit_voltage(ax3, rnn, unit=focal)
+    add_unit_current(ax4, rnn, unit=focal)
+    add_unit_spikes(ax5, rnn, unit=focal)
 
+    plt.tight_layout()
+
+def fig_6(rnn):
+
+    fig, ax = plt.subplots()
+    add_input_hist(ax, rnn)
     plt.tight_layout()
