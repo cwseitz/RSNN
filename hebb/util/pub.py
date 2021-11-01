@@ -288,7 +288,7 @@ def fig_2():
     ax[2].set_title(r'$\sigma=\sqrt{N}/2$', fontsize=14)
     plt.tight_layout()
 
-def fig_3(N=100, q1=0.2, q2=0.8, sigma_e=5, sigma_i=5, p_e=0.8):
+def fig_3(N=400, q1=0.2, q2=0.8, sigma_e=5, sigma_i=5, p_e=0.8):
 
 
     """
@@ -337,7 +337,7 @@ def fig_3(N=100, q1=0.2, q2=0.8, sigma_e=5, sigma_i=5, p_e=0.8):
     ax1.text(-0.1, 1.0, 'A', transform=ax1.transAxes, size=14, weight='bold')
 
     """
-    Fix q, p_e, bias_e, and bias_i and generate maps of sigma_e vs sigma_i
+    Numerical computation as a function of of sigma_e vs sigma_i (q=0.2)
     """
 
     nsigma = 20
@@ -396,6 +396,7 @@ def fig_3(N=100, q1=0.2, q2=0.8, sigma_e=5, sigma_i=5, p_e=0.8):
     map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
     plt.colorbar(map, ax=ax5, fraction=0.046, pad=0.04, orientation='vertical', label=r'$\langle I_{E}\rangle$')
 
+
     net = ExInGaussianNetwork(N, sigma_e, sigma_i, q2, p_e=p_e)
     custom_lines = [Line2D([0],[0],color='red', lw=4),Line2D([0],[0],color='dodgerblue', lw=4)]
     add_spring_graph(ax6, net)
@@ -404,8 +405,9 @@ def fig_3(N=100, q1=0.2, q2=0.8, sigma_e=5, sigma_i=5, p_e=0.8):
     ax6.set_axis_off()
     ax6.text(-0.1, 1.0, 'C', transform=ax6.transAxes, size=14, weight='bold')
 
+
     """
-    Fix q, p_e, bias_e, and bias_i and generate maps of sigma_e vs sigma_i
+    Numerical computation as a function of of sigma_e vs sigma_i (q=0.8)
     """
 
     nsigma = 20
@@ -451,7 +453,7 @@ def fig_3(N=100, q1=0.2, q2=0.8, sigma_e=5, sigma_i=5, p_e=0.8):
               ax_is_box=False)
 
 
-    ax10.imshow(n_ei_in, origin='lower', cmap='coolwarm')
+    ax10.imshow(n_ie_in, origin='lower', cmap='coolwarm')
     format_ax(ax10,
               xlabel=r'$\sigma_{I}$',
               ylabel=r'$\sigma_{E}$')
@@ -461,7 +463,188 @@ def fig_3(N=100, q1=0.2, q2=0.8, sigma_e=5, sigma_i=5, p_e=0.8):
     map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
     plt.colorbar(map, ax=ax10, fraction=0.046, pad=0.04, orientation='vertical', label=r'$\langle I_{E}\rangle$')
 
-def fig_4(N=400, sigma_e=5, sigma_i=5, q=0.8, p_e=0.8):
+def fig_4(N=400, q1=0.2, q2=0.8, sigma_e=5, sigma_i=5, p_e=0.8):
+
+
+    """
+    Summarize the excitatory-inhibitory gaussian network for two different
+    values of the sparsity parameter q (experimental values)
+
+    Parameters
+    ----------
+    N : int, optional
+        Number of neurons in the network. Must be a perfect square
+    q1 : ndarray, optional
+        Sparsity parameter 1
+    q2 : ndarray, optional
+        Sparsity parameter 2
+    sigma_e : float, optional
+        Standard deviation of the excitatory kernel
+    sigma_i : float, optional
+        Standard deviation of the inhibitory kernel
+
+    """
+
+    fig = plt.figure(figsize=(7,10))
+    gs = fig.add_gridspec(6,4, wspace=1, hspace=1)
+    ax0 = fig.add_subplot(gs[:2, :])
+    ax1 = fig.add_subplot(gs[2:4, :2])
+    ax2 = fig.add_subplot(gs[2, 2:3])
+    ax3 = fig.add_subplot(gs[2, 3:4])
+    ax4 = fig.add_subplot(gs[3, 2:3])
+    ax5 = fig.add_subplot(gs[3, 3:4])
+
+    ax6 = fig.add_subplot(gs[4:, :2])
+    ax7 = fig.add_subplot(gs[4, 2:3])
+    ax8 = fig.add_subplot(gs[4, 3:4])
+    ax9 = fig.add_subplot(gs[5, 2:3])
+    ax10 = fig.add_subplot(gs[5, 3:4])
+
+    ax0.set_axis_off()
+    #ax0.text(0.1, 0.8, 'A', transform=ax0.transAxes, size=14, weight='bold')
+
+    net = ExInGaussianNetwork(N, sigma_e, sigma_i, q1, p_e=p_e)
+    custom_lines = [Line2D([0],[0],color='red', lw=4),Line2D([0],[0],color='dodgerblue', lw=4)]
+    add_spring_graph(ax1, net)
+    ax1.set_title(f'$q={q1}$')
+    ax1.legend(custom_lines, ['E', 'I'], loc='upper left')
+    ax1.set_axis_off()
+    ax1.text(-0.1, 1.0, 'A', transform=ax1.transAxes, size=14, weight='bold')
+
+    """
+    Numerical computation as a function of of sigma_e vs sigma_i (q=0.2)
+    """
+
+    nsigma = 20
+    sigmas = np.linspace(np.sqrt(N)/16,np.sqrt(N)/2,nsigma)
+
+    n_ee_out, n_ee_in, n_ei_out, n_ei_in =\
+    exin_net_avg_edeg_fixq(N, sigmas, q1, p_e)
+    n_ee_out /= N*p_e
+    n_ee_in /= N*p_e
+    n_ei_out /= N*p_e
+    n_ei_in /= N*(1-p_e)
+
+    n_ii_out, n_ii_in, n_ie_out, n_ie_in =\
+    exin_net_avg_ideg_fixq(N, sigmas, q1, p_e)
+    n_ii_out /= N*(1-p_e)
+    n_ii_in /= N*(1-p_e)
+    n_ie_out /= N*(1-p_e)
+    n_ie_in /= N*p_e
+
+    ee_mat, ii_mat, ei_mat, ie_mat = exin_net_avg_deg_exp(N, sigmas, q1, p_e)
+
+    ax2.plot(np.mean(n_ii_in,axis=0), color='red')
+    ax2.plot(np.mean(ii_mat,axis=0), color='cyan', linestyle='--')
+    format_ax(ax2,
+              xlabel=r'$\sigma_{I}$',
+              ylabel=r'$\langle I_{I}\rangle/N_{I}$',
+              ax_is_box=False)
+    ax2.text(-0.4, 1.1, 'B', transform=ax2.transAxes, size=14, weight='bold')
+
+    ax3.imshow(ie_mat, origin='lower', cmap='coolwarm')
+    format_ax(ax3,
+              xlabel=r'$\sigma_{I}$',
+              ylabel=r'$\sigma_{E}$')
+
+    ax3.xaxis.tick_top()
+    colormap = cm.get_cmap('coolwarm')
+    norm = mpl.colors.Normalize(vmin=0, vmax=n_ei_in.max())
+    map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+    plt.colorbar(map, ax=ax3, fraction=0.046, pad=0.04, orientation='vertical', label=r'$\langle E_{I}\rangle$')
+
+    ax4.plot(np.mean(n_ee_in,axis=1), color='red')
+    ax4.plot(np.mean(ee_mat,axis=1), color='cyan', linestyle='--')
+    format_ax(ax4,
+              xlabel=r'$\sigma_{E}$',
+              ylabel=r'$\langle E_{E}\rangle/N_{E}$',
+              ax_is_box=False)
+
+
+    ax5.imshow(ei_mat, origin='lower', cmap='coolwarm')
+
+    format_ax(ax5,
+              xlabel=r'$\sigma_{I}$',
+              ylabel=r'$\sigma_{E}$')
+
+    ax5.xaxis.tick_top()
+
+    colormap = cm.get_cmap('coolwarm')
+    norm = mpl.colors.Normalize(vmin=0, vmax=n_ei_out.max())
+    map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+    plt.colorbar(map, ax=ax5, fraction=0.046, pad=0.04, orientation='vertical', label=r'$\langle I_{E}\rangle$')
+
+
+    net = ExInGaussianNetwork(N, sigma_e, sigma_i, q2, p_e=p_e)
+    custom_lines = [Line2D([0],[0],color='red', lw=4),Line2D([0],[0],color='dodgerblue', lw=4)]
+    add_spring_graph(ax6, net)
+    ax6.set_title(f'$q={q2}$')
+    ax6.legend(custom_lines, ['E', 'I'], loc='upper left')
+    ax6.set_axis_off()
+    ax6.text(-0.1, 1.0, 'C', transform=ax6.transAxes, size=14, weight='bold')
+
+
+    """
+    Numerical computation as a function of of sigma_e vs sigma_i (q=0.8)
+    """
+
+    nsigma = 20
+    sigmas = np.linspace(np.sqrt(N)/16,np.sqrt(N)/2,nsigma)
+
+    n_ee_out, n_ee_in, n_ei_out, n_ei_in =\
+    exin_net_avg_edeg_fixq(N, sigmas, q2, p_e)
+    n_ee_out /= N*p_e
+    n_ee_in /= N*p_e
+    n_ei_out /= N*p_e
+    n_ei_in /= N*(1-p_e)
+
+    n_ii_out, n_ii_in, n_ie_out, n_ie_in =\
+    exin_net_avg_ideg_fixq(N, sigmas, q2, p_e)
+    n_ii_out /= N*(1-p_e)
+    n_ii_in /= N*(1-p_e)
+    n_ie_out /= N*(1-p_e)
+    n_ie_in /= N*p_e
+
+    ee_mat, ii_mat, ei_mat, ie_mat = exin_net_avg_deg_exp(N, sigmas, q2, p_e)
+
+    ax7.plot(np.mean(n_ii_in,axis=0), color='red')
+    ax7.plot(np.mean(ii_mat,axis=0), color='cyan', linestyle='--')
+    ax7.text(-0.3, 1.1, 'D', transform=ax7.transAxes, size=14, weight='bold')
+    format_ax(ax7,
+              xlabel=r'$\sigma_{I}$',
+              ylabel=r'$\langle I_{I}\rangle/N_{I}$',
+              ax_is_box=False)
+
+    ax8.imshow(ie_mat, origin='lower', cmap='coolwarm')
+    format_ax(ax8,
+              xlabel=r'$\sigma_{I}$',
+              ylabel=r'$\sigma_{E}$')
+
+    ax8.xaxis.tick_top()
+    colormap = cm.get_cmap('coolwarm')
+    norm = mpl.colors.Normalize(vmin=0, vmax=n_ei_in.max())
+    map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+    plt.colorbar(map, ax=ax8, fraction=0.046, pad=0.04, orientation='vertical', label=r'$\langle E_{I}\rangle$')
+
+    ax9.plot(np.mean(n_ee_in,axis=1), color='red')
+    ax9.plot(np.mean(ee_mat,axis=1), color='cyan', linestyle='--')
+    format_ax(ax9,
+              xlabel=r'$\sigma_{E}$',
+              ylabel=r'$\langle E_{E}\rangle/N_{E}$',
+              ax_is_box=False)
+
+
+    ax10.imshow(ei_mat, origin='lower', cmap='coolwarm')
+    format_ax(ax10,
+              xlabel=r'$\sigma_{I}$',
+              ylabel=r'$\sigma_{E}$')
+    ax10.xaxis.tick_top()
+    colormap = cm.get_cmap('coolwarm')
+    norm = mpl.colors.Normalize(vmin=0, vmax=n_ei_out.max())
+    map = mpl.cm.ScalarMappable(norm=norm, cmap=colormap)
+    plt.colorbar(map, ax=ax10, fraction=0.046, pad=0.04, orientation='vertical', label=r'$\langle I_{E}\rangle$')
+
+def fig_5(N=400, sigma_e=5, sigma_i=5, q=0.8, p_e=0.8):
 
     """
     Shared connectivity in an excitatory-inhibitory gaussian network
@@ -488,7 +671,7 @@ def fig_4(N=400, sigma_e=5, sigma_i=5, q=0.8, p_e=0.8):
     ax.plot(ex_ex_dists,ex_ex_nshared, color='red')
     ax.plot(ex_in_dists,ex_in_nshared, color='blue')
 
-def fig_5(rnn, net, focal=0):
+def fig_6(rnn, net, focal=0):
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 10))
     ax.set_xticks([]); ax.set_yticks([])
@@ -512,7 +695,7 @@ def fig_5(rnn, net, focal=0):
 
     plt.tight_layout()
 
-def fig_6(rnn):
+def fig_7(rnn):
 
     fig, ax = plt.subplots()
     add_input_hist(ax, rnn)

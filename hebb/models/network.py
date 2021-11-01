@@ -1,5 +1,6 @@
 import numpy as np
 import networkx as nx
+import matplotlib.pyplot as plt
 from ..util import *
 
 ##################################################
@@ -93,35 +94,52 @@ class ExInGaussianNetwork:
 
         #Randomly select p_e*N neurons to be excitatory
         bb = np.arange(0,N,1)
-        self.ex_idx = np.random.choice(bb, size=int(round(p_e*self.N)), replace=False)
+        self.ex_idx = np.random.choice(bb, size=int(round(p_e*N)),replace=False)
         self.in_idx = np.setdiff1d(bb,self.ex_idx)
 
         #Get a meshgrid to convert between an (N,1) vector and a (M,M) grid
         xv, yv = np.meshgrid(np.arange(self.M),np.arange(self.M))
-        self.X, self.Y = xv.ravel(), yv.ravel()
+        X, Y = xv.ravel(), yv.ravel()
+        self.C = np.zeros((N,N))
+        q0 = np.ones_like((N,))
 
-        #Get upper triangle indices
-        idx_x, idx_y = np.triu_indices(self.N, k=1) #upper triangle indices
+        #Excitatory-excitatory, excitatory-inhibitory
+        for idx in self.ex_idx:
 
-        #Build sigma maps
-        self.sigma = np.zeros((self.M,self.M))
-        self.sigma[self.X[self.ex_idx], self.Y[self.ex_idx]] = self.sigma_e
-        self.sigma[self.X[self.in_idx], self.Y[self.in_idx]] = self.sigma_i
+            x,y = X[idx], Y[idx]
+            k_ee = torgauss(N,x,y,self.sigma_e)
+            k_ee[X[self.in_idx],Y[self.in_idx]]= 0
+            s_ee = sample_trinomial(k_ee.flatten(),k_ee.flatten(),self.q*q0)
 
-        #iterate over upper triangle of connectivity matrix
-        for k in range(idx_x.shape[0]):
-            #get grid coordinates from conn matrix indices
-            i = idx_x[k]; j = idx_y[k]
-            r_i = self.X[i], self.Y[i] #neuron i grid coordinates
-            r_j = self.X[j], self.Y[j] #neuron j grid coordinates
-            dr_ij = tordist(r_i, r_j, self.M, delta=self.delta)
-            k_ij = delta_gauss(dr_ij, self.sigma[r_i], self.delta)
-            k_ji = delta_gauss(dr_ij, self.sigma[r_j], self.delta)
-            syn = sample_trinomial(k_ij, k_ji, self.q)
-            if syn == 1:
-                self.C[i,j] = 1
-            elif syn == -1:
-                self.C[j,i] = 1
+            k_ei = torgauss(N,x,y,self.sigma_e)
+            k_ei[X[self.ex_idx],Y[self.ex_idx]]= 0
+            k_ie = torgauss(N,x,y,self.sigma_i)
+            k_ie[X[self.ex_idx],Y[self.ex_idx]]= 0
+            s_ei = sample_trinomial(k_ei.flatten(),k_ie.flatten(),self.q*q0)
+            s = s_ee + s_ei
+            self.C[:,idx] = s
+
+        #Inhibitory-inhibitory, Inhibitory-excitatory
+        for idx in self.in_idx:
+
+            x,y = X[idx], Y[idx]
+            k_ii = torgauss(N,x,y,self.sigma_i)
+            k_ii[X[self.ex_idx],Y[self.ex_idx]]= 0
+            s_ii = sample_trinomial(k_ii.flatten(),k_ii.flatten(),self.q*q0)
+
+            k_ie = torgauss(N,x,y,self.sigma_i)
+            k_ie[X[self.in_idx],Y[self.in_idx]]= 0
+            k_ei = torgauss(N,x,y,self.sigma_e)
+            k_ei[X[self.in_idx],Y[self.in_idx]]= 0
+
+            s_ie = sample_trinomial(k_ie.flatten(),k_ei.flatten(),self.q*q0)
+            s = s_ii + s_ie
+            self.C[:,idx] = s
+
+        #Zero lower triangle and reflect negative values
+        self.C[np.tril_indices(N,k=0)] = 0
+        self.C = np.abs(np.clip(self.C,0,1) + np.clip(self.C.T,-1,0))
+
 
     def make_weighted(self, J_ee, J_ei, J_ie, J_ii):
 
@@ -132,6 +150,80 @@ class ExInGaussianNetwork:
         C_ie = np.einsum('i,ij->ij',in_vec,np.einsum('i,ji->ji',in_vec,self.C))
         C_ii = np.einsum('i,ij->ij',ex_vec,np.einsum('i,ji->ji',in_vec,self.C))
         self.C = J_ee*C_ee + J_ei*C_ei + J_ie*C_ie + J_ii*C_ii
+
+# class ExInGaussianNetwork:
+#
+#     """
+#     This function generates a gaussian network from parameter maps
+#     over a 2D lattice. Generates a connectivity matrix Cij in O(n^2) time
+#
+#     Neuron inputs are along axis=1 and neuron outputs are along axis=0
+#     in the connectivity (adjacency) matrix
+#
+#
+#     Parameters
+#     ----------
+#     N : int
+#         Total number of units in the network
+#     sigma : 2D ndarray
+#         Reach parameter for every neuron
+#     q : 2D ndarray
+#         Binomial probability of no synapse
+#
+#     """
+#
+#     def __init__(self, N, sigma_e, sigma_i, q, p_e=0.8, delta=1):
+#
+#         self.N = N
+#         self.M = int(round(np.sqrt(N)))
+#         self.delta = delta
+#         self.p_e = p_e
+#         self.sigma_e = sigma_e
+#         self.sigma_i = sigma_i
+#         self.q = q
+#         self.C = np.zeros((N,N))
+#
+#         #Randomly select p_e*N neurons to be excitatory
+#         bb = np.arange(0,N,1)
+#         self.ex_idx = np.random.choice(bb, size=int(round(p_e*self.N)), replace=False)
+#         self.in_idx = np.setdiff1d(bb,self.ex_idx)
+#
+#         #Get a meshgrid to convert between an (N,1) vector and a (M,M) grid
+#         xv, yv = np.meshgrid(np.arange(self.M),np.arange(self.M))
+#         self.X, self.Y = xv.ravel(), yv.ravel()
+#
+#         #Get upper triangle indices
+#         idx_x, idx_y = np.triu_indices(self.N, k=1) #upper triangle indices
+#
+#         #Build sigma maps
+#         self.sigma = np.zeros((self.M,self.M))
+#         self.sigma[self.X[self.ex_idx], self.Y[self.ex_idx]] = self.sigma_e
+#         self.sigma[self.X[self.in_idx], self.Y[self.in_idx]] = self.sigma_i
+#
+#         #Iterate over upper triangle of connectivity matrix
+#         for k in range(idx_x.shape[0]):
+#             #get grid coordinates from conn matrix indices
+#             i = idx_x[k]; j = idx_y[k]
+#             r_i = self.X[i], self.Y[i] #neuron i grid coordinates
+#             r_j = self.X[j], self.Y[j] #neuron j grid coordinates
+#             dr_ij = tordist(r_i, r_j, self.M, delta=self.delta)
+#             k_ij = delta_gauss(dr_ij, self.sigma[r_i], self.delta)
+#             k_ji = delta_gauss(dr_ij, self.sigma[r_j], self.delta)
+#             syn = sample_trinomial(k_ij, k_ji, self.q)
+#             if syn == 1:
+#                 self.C[i,j] = 1
+#             elif syn == -1:
+#                 self.C[j,i] = 1
+#
+#     def make_weighted(self, J_ee, J_ei, J_ie, J_ii):
+#
+#         ex_vec = np.zeros((self.N,)); ex_vec[self.ex_idx] = 1
+#         in_vec = np.zeros((self.N,)); in_vec[self.in_idx] = 1
+#         C_ee = np.einsum('i,ij->ij',in_vec,np.einsum('i,ji->ji',ex_vec,self.C))
+#         C_ei = np.einsum('i,ij->ij',ex_vec,np.einsum('i,ji->ji',ex_vec,self.C))
+#         C_ie = np.einsum('i,ij->ij',in_vec,np.einsum('i,ji->ji',in_vec,self.C))
+#         C_ii = np.einsum('i,ij->ij',ex_vec,np.einsum('i,ji->ji',in_vec,self.C))
+#         self.C = J_ee*C_ee + J_ei*C_ei + J_ie*C_ie + J_ii*C_ii
 
 
 class FractalNetwork:

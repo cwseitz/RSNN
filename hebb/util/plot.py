@@ -259,7 +259,7 @@ def add_spectral_graph(ax, net, alpha=0.05, arrows=False):
     C = np.zeros_like(net.C)
     C[np.nonzero(net.C)] = 1
     if arrows: arrows = True
-    G = nx.convert_matrix.from_numpy_array(nC, create_using=nx.DiGraph)
+    G = nx.convert_matrix.from_numpy_array(C, create_using=nx.DiGraph)
     pos = nx.spectral_layout(G)
     colors = []
     for n in G.nodes():

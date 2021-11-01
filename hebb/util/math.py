@@ -112,7 +112,8 @@ def torgauss(N, x0, y0, sigma, delta=1):
     M = int(round(np.sqrt(N)))
     xv, yv = np.meshgrid(np.arange(M),np.arange(M))
     X, Y = xv.ravel(), yv.ravel()
-    Z = np.exp(-0.5*tordistv(M,x0,y0,X*delta,Y*delta)**2/sigma**2)
+    d = tordistv(M,x0,y0,X*delta,Y*delta)
+    Z = np.exp(-(0.5*d**2)/sigma**2)
     Z = Z.reshape((M,M))
 
     return Z
@@ -192,36 +193,41 @@ def sample_trinomial(a,b,c):
 
     Parameters
     ----------
-    a : float,
+    a : ndarray,
         Binomial probability of category a being observed
-    b : float,
+    b : ndarray,
         Binomial probability of category b being observed
-    c : float,
+    c : ndarray,
         Binomial probability of category c being observed
 
     Returns
     --------
-    out : int,
+    out : ndarray,
         A sample from the trinomial distribution encoded as
         (a,b,c) = (-1,1,0)
 
     """
 
+    a = np.atleast_1d(a)
+    b = np.atleast_1d(b)
+    c = np.atleast_1d(c)
     p_a, p_b, p_c = trinomial(a,b,c)
-    x = np.random.uniform(0,1)
-    if x <= p_a:
-        out = -1
-    elif p_a < x <= p_a+p_b:
-        out = 1
-    elif x > p_a+p_b:
-        out = 0
+    x = np.random.uniform(0,1,size=a.shape)
+    out = np.zeros_like(x)
+    out[np.where(np.logical_and(x > 0, x <= p_a))] = 1
+    out[np.where(np.logical_and(x > p_a, x <= p_a+p_b))] = -1
+    out[np.where(x > p_a+p_b)] = 0
+    if out.shape == (1,): out = out.item()
+
     return out
 
 def trinomial(a,b,c):
 
     """
     Construct the trinomial distribution from three binomial probabilities
-    provided by the user
+    provided by the user. This function will handle the case where
+    a = 1 and b = 1 by setting all probabilities to zero, This would represent
+    a neuron being connected to itself (an autapse), which we do not allow
 
     Parameters
     ----------
@@ -246,6 +252,7 @@ def trinomial(a,b,c):
     p_a = np.divide(p_a, z, out=np.zeros_like(p_a), where=z!=0)
     p_b = np.divide(p_b, z, out=np.zeros_like(p_b), where=z!=0)
     p_c = np.divide(p_c, z, out=np.zeros_like(p_c), where=z!=0)
+
     return p_a, p_b, p_c
 
 

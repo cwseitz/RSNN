@@ -33,22 +33,22 @@ J_ee, J_ei, J_ie, J_ii = [0.1,0.1,-0.1,-0.1]
 net = ExInGaussianNetwork(N, sigma_e, sigma_i, q, p_e=p_e)
 net.make_weighted(J_ee, J_ei, J_ie, J_ii)
 
-#Stimulus
-mu = 0.5*np.ones((N,))
-var = 0.1**2
-cov = np.eye(N)*var
-currents = np.random.multivariate_normal(mu, cov, size=(nsteps, trials)).T
-
-lif = LIF(T, dt, tau_ref, net.C, trials=trials)
-lif.call(currents)
-
-v_mov = np.zeros((nsteps,1,1,M,M))
-X = np.mean(lif.I, axis=1)
-for i in range(nsteps):
-    frame = X[:,i]
-    frame = frame.reshape((M,M))
-    v_mov[i,0,0,:,:] = frame
-imsave('../data/temp.tif', v_mov, metadata={'axes': 'TZCYX'})
-
-fig_5(lif, net)
-plt.show()
+# #Stimulus
+# mu = 0.5*np.ones((N,))
+# var = 0.1**2
+# cov = np.eye(N)*var
+# currents = np.random.multivariate_normal(mu, cov, size=(nsteps, trials)).T
+#
+# lif = LIF(T, dt, tau_ref, net.C, trials=trials)
+# lif.call(currents)
+#
+# v_mov = np.zeros((nsteps,1,1,M,M))
+# X = np.mean(lif.I, axis=1)
+# for i in range(nsteps):
+#     frame = X[:,i]
+#     frame = frame.reshape((M,M))
+#     v_mov[i,0,0,:,:] = frame
+# imsave('../data/temp.tif', v_mov, metadata={'axes': 'TZCYX'})
+#
+# fig_5(lif, net)
+# plt.show()
