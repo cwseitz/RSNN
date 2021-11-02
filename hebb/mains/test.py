@@ -17,6 +17,7 @@ from skimage.io import imsave
 
 
 #test_exin_gauss()
+
 fig_3()
 fig_4()
 plt.show()

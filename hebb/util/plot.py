@@ -239,7 +239,7 @@ def add_ego_graph(ax, net, alpha=0.5):
     colors = [G[u][v]['color'] for u,v in edges]
     nx.draw(G, pos, ax=ax, alpha=alpha, node_color='black', edge_color=colors, node_size=20, with_labels=False)
 
-def add_spectral_graph(ax, net, alpha=0.05, arrows=False):
+def add_spectral_graph(ax, net, alpha=0.05, sparse=False, arrows=False):
 
     """
     Draw a graph in spectral format
@@ -256,10 +256,14 @@ def add_spectral_graph(ax, net, alpha=0.05, arrows=False):
         whether or not to draw the direction of an edge via arrows
     """
 
-    C = np.zeros_like(net.C)
-    C[np.nonzero(net.C)] = 1
-    if arrows: arrows = True
-    G = nx.convert_matrix.from_numpy_array(C, create_using=nx.DiGraph)
+
+    if arrows:
+        arrows = True
+    if sparse:
+        G = nx.convert_matrix.from_scipy_sparse_matrix(net.C, create_using=nx.DiGraph)
+    else:
+        G = nx.convert_matrix.from_numpy_array(net.C, create_using=nx.DiGraph)
+
     pos = nx.spectral_layout(G)
     colors = []
     for n in G.nodes():
@@ -267,7 +271,7 @@ def add_spectral_graph(ax, net, alpha=0.05, arrows=False):
     nx.draw_networkx_nodes(G, pos, ax=ax, node_color=colors, node_size=20, node_shape='x')
     nx.draw_networkx_edges(G, pos, ax=ax, edge_color='black', alpha=alpha, arrows=arrows, arrowsize=10)
 
-def add_spring_graph(ax, net, alpha=0.05, arrows=False):
+def add_spring_graph(ax, net, alpha=0.05, sparse=False, arrows=False):
 
     """
     Draw a graph in spring format
@@ -284,20 +288,17 @@ def add_spring_graph(ax, net, alpha=0.05, arrows=False):
         whether or not to draw the direction of an edge via arrows
     """
 
-    C = np.zeros_like(net.C)
-    C[np.nonzero(net.C)] = 1
-    if arrows: arrows = True
-    G = nx.convert_matrix.from_numpy_array(C, create_using=nx.DiGraph)
+    if arrows:
+        arrows = True
+    if sparse:
+        G = nx.convert_matrix.from_scipy_sparse_matrix(net.C, create_using=nx.DiGraph)
+    else:
+        G = nx.convert_matrix.from_numpy_array(net.C, create_using=nx.DiGraph)
+
     pos = nx.spring_layout(G)
     colors = []
     for n in G.nodes():
-        try:
-            if n in net.ex_idx:
-                colors.append('red')
-            else:
-                colors.append('dodgerblue')
-        except:
-            colors.append('red')
+        colors.append('dodgerblue')
     nx.draw_networkx_nodes(G, pos, ax=ax, node_color=colors, node_size=20, node_shape='x')
     nx.draw_networkx_edges(G, pos, ax=ax, edge_color='black', alpha=alpha, arrows=arrows, arrowsize=10)
 

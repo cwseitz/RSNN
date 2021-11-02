@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import sys
 from hebb.models import *
 from hebb.util import *
 
@@ -37,7 +38,7 @@ def test_trinomial():
     print("--- %s seconds ---" % (time.time() - start_time))
 
 
-def test_exin_gauss(N=1600,sigma_e=2,sigma_i=2,q0=0.2,p_e=0.8,delta=1):
+def test_exin_gauss(N=2500,sigma_e=4,sigma_i=2,q0=0.8,p_e=0.8,delta=1):
 
     """
     Test the generation of excitatory-inhibitory gaussian networks
@@ -46,6 +47,18 @@ def test_exin_gauss(N=1600,sigma_e=2,sigma_i=2,q0=0.2,p_e=0.8,delta=1):
     ----------
     """
 
-    start_time = time.time()
-    exin = ExInGaussianNetwork(N, sigma_e, sigma_i, q0, p_e=p_e, delta=delta)
-    print("--- %s seconds ---" % (time.time() - start_time))
+    times = []
+    N_arr = np.arange(80,130,10)**2
+    for N in N_arr:
+        start_time = time.time()
+        exin = ExInGaussianNetwork(N, sigma_e, sigma_i, q0, p_e=p_e, delta=delta)
+        print(f'N = {N}, Size: {sys.getsizeof(exin.C)} bytes')
+        print("--- %s seconds ---" % (time.time() - start_time))
+        times.append(time.time() - start_time)
+        del exin
+        exin = ExInGaussianNetwork_Sparse(N, sigma_e, sigma_i, q0, p_e=p_e, delta=delta)
+        print(f'N = {N}, Size: {sys.getsizeof(exin.C)} bytes')
+        print("--- %s seconds ---" % (time.time() - start_time))
+        times.append(time.time() - start_time)
+        del exin
+    times = np.array(times)

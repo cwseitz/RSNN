@@ -84,7 +84,7 @@ def delta_gauss(dx, sigma, delta):
     val = np.exp((-0.5*dx**2)/sigma**2)
     return val
 
-def torgauss(N, x0, y0, sigma, delta=1):
+def torgauss(X, Y, x0, y0, sigma, delta=1):
 
     """
     Return a symmetric gaussian function centered at (x0,y0) sampled on a
@@ -108,17 +108,14 @@ def torgauss(N, x0, y0, sigma, delta=1):
 
     """
 
-
-    M = int(round(np.sqrt(N)))
-    xv, yv = np.meshgrid(np.arange(M),np.arange(M))
-    X, Y = xv.ravel(), yv.ravel()
-    d = tordistv(M,x0,y0,X*delta,Y*delta)
+    d = tordistv(X, Y, x0, y0)
     Z = np.exp(-(0.5*d**2)/sigma**2)
+    M = M = int(round(np.sqrt(X.shape[0])))
     Z = Z.reshape((M,M))
 
     return Z
 
-def tordistv(M, x0, y0, X, Y, delta=1):
+def tordistv(X, Y, x0, y0, delta=1):
 
     """
     A vectorized version of the tordist function
@@ -146,6 +143,7 @@ def tordistv(M, x0, y0, X, Y, delta=1):
 
     """
 
+    M = int(round(np.sqrt(X.shape[0])))
     dx = np.minimum(np.abs(X-x0),M*delta-np.abs(X-x0))
     dy = np.minimum(np.abs(Y-y0),M*delta-np.abs(Y-y0))
     dr = np.sqrt(dx**2 + dy**2)
@@ -184,7 +182,7 @@ def tordist(r_i, r_j, M, delta):
     return dr
 
 
-def sample_trinomial(a,b,c):
+def sample_trinomial(a,b,c, return_sample=False):
 
     """
     Draw a sample from a trinomial distribution (a categorical distribution

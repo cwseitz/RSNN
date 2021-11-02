@@ -346,7 +346,7 @@ def exin_net_avg_deg_exp(N, sigmas, q, p_e, delta=1):
     q : ndarray
         Value of the sparsity parameter
     p_e : float,
-     Fraction of neurons that are excitatory
+     Fraction of neurons that are excitatory`
     delta: int,
         Lattice spacing
 

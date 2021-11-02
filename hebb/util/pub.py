@@ -115,7 +115,7 @@ def fig_1(N,sigma,q):
     ax6 = fig.add_subplot(gs[4:6,4:6])
     ax7 = fig.add_subplot(gs[4:6,6:8])
 
-    add_spring_graph(ax0, net)
+    add_spring_graph(ax0, net, sparse=False)
     ax0.set_title(r'$N=100$')
     ax0.set_axis_off()
     ax0.text(-0.1, 0.9, 'A', transform=ax0.transAxes, size=10, weight='bold')
@@ -330,7 +330,7 @@ def fig_3(N=400, q1=0.2, q2=0.8, sigma_e=5, sigma_i=5, p_e=0.8):
 
     net = ExInGaussianNetwork(N, sigma_e, sigma_i, q1, p_e=p_e)
     custom_lines = [Line2D([0],[0],color='red', lw=4),Line2D([0],[0],color='dodgerblue', lw=4)]
-    add_spring_graph(ax1, net)
+    add_spring_graph(ax1, net, sparse=False)
     ax1.set_title(f'$q={q1}$')
     ax1.legend(custom_lines, ['E', 'I'], loc='upper left')
     ax1.set_axis_off()
@@ -399,7 +399,7 @@ def fig_3(N=400, q1=0.2, q2=0.8, sigma_e=5, sigma_i=5, p_e=0.8):
 
     net = ExInGaussianNetwork(N, sigma_e, sigma_i, q2, p_e=p_e)
     custom_lines = [Line2D([0],[0],color='red', lw=4),Line2D([0],[0],color='dodgerblue', lw=4)]
-    add_spring_graph(ax6, net)
+    add_spring_graph(ax6, net, sparse=False)
     ax6.set_title(f'$q={q2}$')
     ax6.legend(custom_lines, ['E', 'I'], loc='upper left')
     ax6.set_axis_off()
@@ -505,7 +505,7 @@ def fig_4(N=400, q1=0.2, q2=0.8, sigma_e=5, sigma_i=5, p_e=0.8):
 
     net = ExInGaussianNetwork(N, sigma_e, sigma_i, q1, p_e=p_e)
     custom_lines = [Line2D([0],[0],color='red', lw=4),Line2D([0],[0],color='dodgerblue', lw=4)]
-    add_spring_graph(ax1, net)
+    add_spring_graph(ax1, net, sparse=False)
     ax1.set_title(f'$q={q1}$')
     ax1.legend(custom_lines, ['E', 'I'], loc='upper left')
     ax1.set_axis_off()
@@ -577,7 +577,7 @@ def fig_4(N=400, q1=0.2, q2=0.8, sigma_e=5, sigma_i=5, p_e=0.8):
 
     net = ExInGaussianNetwork(N, sigma_e, sigma_i, q2, p_e=p_e)
     custom_lines = [Line2D([0],[0],color='red', lw=4),Line2D([0],[0],color='dodgerblue', lw=4)]
-    add_spring_graph(ax6, net)
+    add_spring_graph(ax6, net, sparse=False)
     ax6.set_title(f'$q={q2}$')
     ax6.legend(custom_lines, ['E', 'I'], loc='upper left')
     ax6.set_axis_off()
@@ -686,7 +686,7 @@ def fig_6(rnn, net, focal=0):
     ax4 = ax.inset_axes([0, 0.2, 1, 0.15])
     ax5 = ax.inset_axes([0, 0, 1, 0.15])
 
-    add_spring_graph(ax0, net)
+    add_spring_graph(ax0, net, sparse=False)
     add_raster(ax1, rnn.Z, n_units=100)
     add_activity(ax2, rnn.Z)
     add_unit_voltage(ax3, rnn, unit=focal)
