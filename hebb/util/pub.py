@@ -671,6 +671,7 @@ def fig_5(N=400, sigma_e=5, sigma_i=5, q=0.8, p_e=0.8):
     ax.plot(ex_ex_dists,ex_ex_nshared, color='red')
     ax.plot(ex_in_dists,ex_in_nshared, color='blue')
 
+
 def fig_6(rnn, net, focal=0):
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 10))
@@ -695,8 +696,50 @@ def fig_6(rnn, net, focal=0):
 
     plt.tight_layout()
 
-def fig_7(rnn):
+def fig_7(N=1000,n_in=100,p_e=0.8,p_xx=[0.1,0.1,0.1,0.1],J_xx=[1,1,-1,-1],q=0.5):
 
-    fig, ax = plt.subplots()
-    add_input_hist(ax, rnn)
-    plt.tight_layout()
+    """
+    Summarize the random excitatory-inhibitory gaussian network
+
+    Parameters
+    ----------
+    N : int, optional
+        Number of neurons in the network. Must be a perfect square
+    sigma_e : float, optional
+        Standard deviation of the excitatory kernel
+    sigma_i : float, optional
+        Standard deviation of the inhibitory kernel
+    q : ndarray, optional
+        Sparsity parameter
+
+    """
+
+    exinrand = ExInRandomNetwork(N, p_e, n_in, p_xx, J_xx, q)
+
+    #compute degree distributions
+    n_e = int(round(p_e*N))
+    ee = np.sum(exinrand.C[:n_e,:n_e], axis=0)
+    ei = np.sum(exinrand.C[n_e:,:n_e], axis=0)
+    ie = np.sum(exinrand.C[:n_e,n_e:], axis=0)
+    ii = np.sum(exinrand.C[n_e:,n_e:], axis=0)
+
+    fig, ax = plt.subplots(2,2)
+    #add_spring_graph(ax[0], exinrand, sparse=False)
+    ax[0,0].hist(ee, label=r'$E\rightarrow E$', density=True)
+    ax[0,0].hist(ei, label=r'$E\rightarrow I$', density=True)
+    ax[0,0].legend()
+    ax[0,1].hist(ie, label=r'$I\rightarrow E$', density=True)
+    ax[0,1].hist(ii, label=r'$I\rightarrow I$', density=True)
+    ax[0,1].legend()
+
+    ee = np.sum(exinrand.C[:n_e,:n_e], axis=1)
+    ei = np.sum(exinrand.C[n_e:,:n_e], axis=1)
+    ie = np.sum(exinrand.C[:n_e,n_e:], axis=1)
+    ii = np.sum(exinrand.C[n_e:,n_e:], axis=1)
+
+    ax[1,0].hist(ee, label=r'$E\leftarrow E$', density=True)
+    ax[1,0].hist(ie, label=r'$I\leftarrow E$', density=True)
+    ax[1,0].legend()
+    ax[1,1].hist(ei, label=r'$E\leftarrow I$', density=True)
+    ax[1,1].hist(ii, label=r'$I\leftarrow I$', density=True)
+    ax[1,1].legend()

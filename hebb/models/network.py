@@ -13,6 +13,67 @@ from ..util import *
 ## Email: cwseitz@uchicago.edu
 ##################################################
 
+class ExInRandomNetwork:
+
+
+    """
+    This function generates a random network of excitatory and inhibitory
+    neurons. N = N_e + N_e = p_e*N + p_i*N.
+
+    Synaptic weights are scaled as 1/sqrt(N). This is not a binomial random
+    graph. It is assumed that that probability of a synapse, for example,
+    p_ee gives exactly C_ee = p_ee*N connections between and excitatory
+    neuron and other excitatory neurons
+
+    Parameters
+    ----------
+    """
+
+
+    def __init__(self, N, p_e, n_in, p_xx, J_xx, q):
+
+        # Determine numbers of neurons
+        self.N = N
+        self.p_e = p_e
+        self.n_e = int(round(self.p_e*self.N))
+        self.n_i = int(round((1-self.p_e)*self.N))
+        self.n_in = n_in
+        self.p_ee, self.p_ei, self.p_ie, self.p_ii = p_xx
+        self.J_ee, self.J_ei, self.J_ie, self.J_ii = J_xx
+        self.q = q
+
+        # Initialize connectivity matrix
+        self.C = np.zeros((self.N, self.N))
+        self.k_ee = self.p_ee*np.ones((self.n_e,))
+        self.k_ei = self.p_ei*np.ones((self.n_i,))
+        self.k_ie = self.p_ie*np.ones((self.n_i,))
+
+        #Excitatory-excitatory, excitatory-inhibitory
+        for idx in range(self.n_e):
+            s_ee = sample_trinomial(self.k_ee,self.k_ee,self.q*np.ones((self.n_e,)))
+            s_ei = sample_trinomial(self.k_ei,self.k_ie,self.q*np.ones((self.n_i,)))
+            self.C[:,idx] = np.concatenate((s_ee,s_ei))
+
+        self.k_ii = self.p_ee*np.ones((self.n_i,))
+        self.k_ei = self.p_ei*np.ones((self.n_e,))
+        self.k_ie = self.p_ie*np.ones((self.n_e,))
+
+        #Inhibitory-inhibitory, Inhibitory-excitatory
+        for idx in range(self.n_e,self.N):
+            s_ie = sample_trinomial(self.k_ie,self.k_ei,self.q*np.ones((self.n_e,)))
+            s_ii = sample_trinomial(self.k_ii,self.k_ii,self.q*np.ones((self.n_i,)))
+            self.C[:,idx] = np.concatenate((s_ie, s_ii))
+
+        #Zero lower triangle and reflect negative values
+        self.C[np.tril_indices(self.N,k=0)] = 0
+        self.C = np.abs(np.clip(self.C,0,1) + np.clip(self.C.T,-1,0))
+
+    def make_weighted(self):
+        self.C[:self.n_e,:self.n_e] *= self.J_ee
+        self.C[self.n_e:,:self.n_e] *= self.J_ei
+        self.C[:self.n_e,self.n_e:] *= self.J_ie
+        self.C[self.n_e:,self.n_e:] *= self.J_ii
+
 class GaussianNetwork:
 
     """

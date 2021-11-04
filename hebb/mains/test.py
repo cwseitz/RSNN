@@ -16,8 +16,5 @@ from skimage.io import imsave
 ##################################################
 
 
-#test_exin_gauss()
-
-fig_3()
-fig_4()
+fig_7(N=1000)
 plt.show()
