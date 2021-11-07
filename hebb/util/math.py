@@ -8,6 +8,29 @@ import numpy as np
 ## Email: cwseitz@uchicago.edu
 ##################################################
 
+def cc(x):
+
+    """
+    Compute the cross-correlation function for all possible pairs in the
+    input tensor x using FFT (fast)
+
+    Parameters
+    ----------
+
+    """
+
+    z1 = fft(x,axis=-1)
+    z_arr = []
+    #iterate over trials
+    for i in range(y1.shape[1]):
+        x3 = np.einsum('ij,kj->ikj',x1,x1.conj())
+        x3 = x3.reshape((x2.shape[0]*x2.shape[0],x2.shape[1]))
+        z3 = np.real(ifft(x3))
+        z_arr.append(z3)
+    z_arr = np.array(z_arr)
+    z_arr = np.swapaxes(z_arr,0,1)
+    return z_arr
+
 def multi_gauss(X, mu, cov):
 
     """

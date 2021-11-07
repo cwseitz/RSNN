@@ -696,50 +696,78 @@ def fig_6(rnn, net, focal=0):
 
     plt.tight_layout()
 
-def fig_7(N=1000,n_in=100,p_e=0.8,p_xx=[0.1,0.1,0.1,0.1],J_xx=[1,1,-1,-1],q=0.5):
+def fig_7(ffwd,net,rnn):
 
     """
-    Summarize the random excitatory-inhibitory gaussian network
+    Summarize the random excitatory-inhibitory network
 
     Parameters
     ----------
     N : int, optional
-        Number of neurons in the network. Must be a perfect square
-    sigma_e : float, optional
-        Standard deviation of the excitatory kernel
-    sigma_i : float, optional
-        Standard deviation of the inhibitory kernel
-    q : ndarray, optional
-        Sparsity parameter
-
+        Number of neurons in the network
     """
 
-    exinrand = ExInRandomNetwork(N, p_e, n_in, p_xx, J_xx, q)
+    fig = plt.figure(figsize=(5,7))
+    gs = fig.add_gridspec(8,4, wspace=1, hspace=3)
+    ax0 = fig.add_subplot(gs[:2, :])
+    ax1 = fig.add_subplot(gs[2:4, :])
+    ax2 = fig.add_subplot(gs[4:6, :2])
+    ax3 = fig.add_subplot(gs[4:6, 2:])
+    ax4 = fig.add_subplot(gs[6:8, :2])
+    ax5 = fig.add_subplot(gs[6:8, 2:])
+
+
+    add_raster(ax0, rnn.Z, n_units=100)
+    add_unit_current(ax1,rnn)
+    add_unit_voltage(ax2,rnn)
+    add_exin_rate_hist(ax3,rnn,net.n_e,net.n_i)
+    add_cc_hist(ax4,ffwd)
+    add_cc_hist(ax4,rnn.I_r)
+
+    format_ax(ax0,
+              xlabel=r'Time $(\mathrm{ms})$',
+              ylabel='Neuron',
+              ax_is_box=True)
+    format_ax(ax1,
+              xlabel=r'Time $(\mathrm{ms})$',
+              ylabel='$\mathbf{PSP} \; [\mathrm{mV}]$',
+              ax_is_box=False)
+    ax1.legend(loc='upper right')
+    format_ax(ax2,
+              xlabel=r'Time $(\mathrm{ms})$',
+              ylabel='$\mathbf{V} \; [\mathrm{mV}]$',
+              ax_is_box=False)
+    format_ax(ax3,
+              xlabel=r'Rate $(\mathrm{Hz})$',
+              ylabel='Counts',
+              ax_is_box=False)
+    ax3.legend(loc='upper right')
+    plt.tight_layout()
+
+    #ax1.plot(rnn.I[0,0,:],color='blue',alpha=0.5)
 
     #compute degree distributions
-    n_e = int(round(p_e*N))
-    ee = np.sum(exinrand.C[:n_e,:n_e], axis=0)
-    ei = np.sum(exinrand.C[n_e:,:n_e], axis=0)
-    ie = np.sum(exinrand.C[:n_e,n_e:], axis=0)
-    ii = np.sum(exinrand.C[n_e:,n_e:], axis=0)
+    # n_e = int(round(net.p_e*net.N))
+    # ee = np.sum(net.C[:n_e,:n_e], axis=1)
+    # ei = np.sum(net.C[n_e:,:n_e], axis=1)
+    # ie = np.sum(net.C[:n_e,n_e:], axis=1)
+    # ii = np.sum(net.C[n_e:,n_e:], axis=1)
 
-    fig, ax = plt.subplots(2,2)
-    #add_spring_graph(ax[0], exinrand, sparse=False)
-    ax[0,0].hist(ee, label=r'$E\rightarrow E$', density=True)
-    ax[0,0].hist(ei, label=r'$E\rightarrow I$', density=True)
-    ax[0,0].legend()
-    ax[0,1].hist(ie, label=r'$I\rightarrow E$', density=True)
-    ax[0,1].hist(ii, label=r'$I\rightarrow I$', density=True)
-    ax[0,1].legend()
+    # ax2.hist(ee, label=r'$E\rightarrow E$', density=True)
+    # ax2.hist(ei, label=r'$E\rightarrow I$', density=True)
+    # ax2.legend()
+    # ax3.hist(ie, label=r'$I\rightarrow E$', density=True)
+    # ax3.hist(ii, label=r'$I\rightarrow I$', density=True)
+    # ax3.legend()
 
-    ee = np.sum(exinrand.C[:n_e,:n_e], axis=1)
-    ei = np.sum(exinrand.C[n_e:,:n_e], axis=1)
-    ie = np.sum(exinrand.C[:n_e,n_e:], axis=1)
-    ii = np.sum(exinrand.C[n_e:,n_e:], axis=1)
-
-    ax[1,0].hist(ee, label=r'$E\leftarrow E$', density=True)
-    ax[1,0].hist(ie, label=r'$I\leftarrow E$', density=True)
-    ax[1,0].legend()
-    ax[1,1].hist(ei, label=r'$E\leftarrow I$', density=True)
-    ax[1,1].hist(ii, label=r'$I\leftarrow I$', density=True)
-    ax[1,1].legend()
+    # ee = np.sum(exinrand.C[:n_e,:n_e], axis=1)
+    # ei = np.sum(exinrand.C[n_e:,:n_e], axis=1)
+    # ie = np.sum(exinrand.C[:n_e,n_e:], axis=1)
+    # ii = np.sum(exinrand.C[n_e:,n_e:], axis=1)
+    #
+    # ax[1,0].hist(ee, label=r'$E\leftarrow E$', density=True)
+    # ax[1,0].hist(ie, label=r'$I\leftarrow E$', density=True)
+    # ax[1,0].legend()
+    # ax[1,1].hist(ei, label=r'$E\leftarrow I$', density=True)
+    # ax[1,1].hist(ii, label=r'$I\leftarrow I$', density=True)
+    # ax[1,1].legend()

@@ -13,6 +13,62 @@ from ..util import *
 ## Email: cwseitz@uchicago.edu
 ##################################################
 
+
+class ExInFixedNetwork:
+
+
+    """
+    This function generates a random network of excite and inhib neurons
+
+    Synaptic weights are scaled as 1/sqrt(N). This is not a binomial random
+    graph! It is assumed that that probability of a synapse, for example,
+    p_ee gives exactly C_ee = p_ee*N connections between and excitatory neurons
+
+    This function allows synaptic loops, for the sake of run time
+
+    Parameters
+    ----------
+    """
+
+
+    def __init__(self, N, p_e, p_xx, J_xx):
+
+        # Determine numbers of neurons
+        self.N = N
+        self.p_e = p_e
+        self.p_i = 1-p_e
+        self.n_e = int(round(self.p_e*self.N))
+        self.n_i = int(round((1-self.p_e)*self.N))
+        self.p_ee, self.p_ei, self.p_ie, self.p_ii = p_xx
+        self.J_ee, self.J_ei, self.J_ie, self.J_ii = J_xx
+
+        # Initialize connectivity matrix
+        self.C = np.zeros((self.N, self.N))
+        self.k_ee = int(round(self.p_ee*self.n_e))
+        self.k_ie = int(round(self.p_ie*self.n_e))
+        self.k_ei = int(round(self.p_ei*self.n_i))
+        self.k_ii = int(round(self.p_ii*self.n_i))
+
+        for i in range(self.n_e):
+            x = np.random.choice(np.arange(0,self.n_e,1),self.k_ee,replace=False)
+            self.C[x,i] = 1
+            x = np.random.choice(np.arange(self.n_e,self.N, 1),self.k_ei,replace=False)
+            self.C[x,i] = 1
+
+        for i in range(self.n_e,self.N):
+            x = np.random.choice(np.arange(0,self.n_e,1),self.k_ie,replace=False)
+            self.C[x,i] = 1
+            x = np.random.choice(np.arange(self.n_e,self.N, 1),self.k_ii,replace=False)
+            self.C[x,i] = 1
+
+        np.fill_diagonal(self.C, 0)
+
+    def make_weighted(self):
+        self.C[:self.n_e,:self.n_e] *= self.J_ee
+        self.C[self.n_e:,:self.n_e] *= self.J_ei
+        self.C[:self.n_e,self.n_e:] *= self.J_ie
+        self.C[self.n_e:,self.n_e:] *= self.J_ii
+
 class ExInRandomNetwork:
 
 
@@ -20,24 +76,21 @@ class ExInRandomNetwork:
     This function generates a random network of excitatory and inhibitory
     neurons. N = N_e + N_e = p_e*N + p_i*N.
 
-    Synaptic weights are scaled as 1/sqrt(N). This is not a binomial random
-    graph. It is assumed that that probability of a synapse, for example,
-    p_ee gives exactly C_ee = p_ee*N connections between and excitatory
-    neuron and other excitatory neurons
+    Synaptic weights are scaled as 1/sqrt(N).
 
     Parameters
     ----------
     """
 
 
-    def __init__(self, N, p_e, n_in, p_xx, J_xx, q):
+    def __init__(self, N, p_e, p_xx, J_xx, q):
 
         # Determine numbers of neurons
         self.N = N
         self.p_e = p_e
+        self.p_i = 1-p_e
         self.n_e = int(round(self.p_e*self.N))
         self.n_i = int(round((1-self.p_e)*self.N))
-        self.n_in = n_in
         self.p_ee, self.p_ei, self.p_ie, self.p_ii = p_xx
         self.J_ee, self.J_ei, self.J_ie, self.J_ii = J_xx
         self.q = q

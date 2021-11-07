@@ -171,7 +171,7 @@ class ClampedLIF(RNN):
 
 class LIF(RNN):
 
-    def __init__(self,  T, dt, tau_ref, J, trials=1, tau=0.02, g_l=20, thr=20, dtype=np.float32):
+    def __init__(self, T, dt, tau_ref, v0, J, trials, tau, thr, dtype=np.float16):
 
         super(LIF, self).__init__(T, dt, tau_ref, J=J, trials=trials, dtype=dtype)
 
@@ -190,14 +190,14 @@ class LIF(RNN):
             Time resolution in seconds
         tau_ref : float
             Refractory time in seconds
+        v0 : float
+            Resting potential
         J : 2D ndarray
             Synaptic connectivity matrix
         trials : int
             Number of stimulations to run
         tau : float
             Membrane time constant
-        g_l : float
-            The leak conductance of the membrane
         thr : float
             Firing threshold
         dtype : numpy data type
@@ -207,8 +207,8 @@ class LIF(RNN):
 
         #LIF specific parameters
         self.tau = tau
-        self.g_l = g_l
         self.thr = thr
+        self.v0 = v0
 
     def spike_function(self, v):
         z = (v >= self.thr).astype('int')
@@ -217,10 +217,10 @@ class LIF(RNN):
     def zero_state(self):
 
         #Initialize state variables
-        self.I = np.zeros(shape=(self.N, self.trials, self.nsteps), dtype=self.dtype)
+        self.I_r = np.zeros(shape=(self.N, self.trials, self.nsteps), dtype=self.dtype)
         self.V = np.zeros(shape=(self.N, self.trials, self.nsteps), dtype=self.dtype)
         self.Z = np.zeros(shape=(self.N, self.trials, self.nsteps), dtype=np.int8)
-        self.R = np.zeros(shape=(self.N,self.trials,self.nsteps+self.ref_steps), dtype=np.int8)
+        self.V[:,:,0] = self.v0
 
     def check_shape(self, x):
         if x is None:
@@ -230,22 +230,35 @@ class LIF(RNN):
                 raise ValueError('Check input object shape')
         return True
 
-    def call(self, currents):
+    def call(self, ffwd):
 
-        self.currents = currents
-        self.check_shape(self.currents)
+        self.ffwd = ffwd
+        self.check_shape(self.ffwd)
         self.zero_state()
 
-        start, end = self.ref_steps, self.nsteps
-        for i in range(start, end):
-            i_in = self.currents[:,:,i-1]
-            i_re = np.matmul(self.J, self.Z[:,:,i-1])
-            self.I[:,:,i] =  i_in + i_re
-            #apply spike function to previous time step
-            self.Z[:,:,i] = self.spike_function(self.V[:,:,i-1])
-            #check if the neuron spiked in the last tau_ref time steps
-            self.R[:,:,i+self.ref_steps] = np.sum(self.Z[:,:,i-self.ref_steps:i+1], axis=-1)
+        for i in range(1,self.nsteps):
+
+            if i % 100 == 0:
+                print(f'Time step {i}')
+                
+            i_in = self.ffwd[:,:,i-1]
+            self.I_r[:,:,i-1] = np.matmul(self.J, self.Z[:,:,i-1])
+
+            #update neuron voltages
             self.V[:,:,i] = self.V[:,:,i-1] - self.dt*self.V[:,:,i-1]/self.tau +\
-                            self.I[:,:,i-1]/(self.tau*self.g_l)
-            #Enforce refractory period
-            self.V[:,:,i] = self.V[:,:,i] - self.V[:,:,i]*self.R[:,:,i+self.ref_steps]
+                            self.ffwd[:,:,i-1] + self.I_r[:,:,i-1]
+
+            #find the neurons which spiked in the last ref_steps time steps
+            if i > self.ref_steps:
+                ref = np.sum(self.Z[:,:,i-self.ref_steps:i],axis=-1)
+                #set voltages to zero if refractory
+                self.V[:,:,i] = self.V[:,:,i]*(1-ref)
+            else:
+                ref = np.sum(self.Z[:,:,:self.ref_steps],axis=-1)
+                #set voltages to zero if refractory
+                self.V[:,:,i] = self.V[:,:,i]*(1-ref)
+
+            #determine which neurons cross threshold in this time step
+            self.Z[:,:,i] = self.spike_function(self.V[:,:,i])
+            #reset the voltage if it spiked
+            self.V[:,:,i] = self.V[:,:,i]*(1-self.Z[:,:,i])

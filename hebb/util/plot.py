@@ -18,7 +18,7 @@ from .math import *
 Neuron state variables in time
 """
 
-def add_unit_voltage(ax, rnn, unit=0, trial=0):
+def add_unit_voltage(ax, rnn, unit=0, trial=0, color='black'):
 
     """
     Add the voltage trace for a single neuron
@@ -35,9 +35,10 @@ def add_unit_voltage(ax, rnn, unit=0, trial=0):
         index of trial to plot
     """
 
-    ax.plot(rnn.I[unit,trial,:], 'k')
+    ax.plot(rnn.V[unit,trial,:], color=color)
+    ax.plot(rnn.thr*2*rnn.Z[unit,trial,:], color='red', linestyle='-')
     ax.grid(which='both')
-    ax.set_ylabel('$\mathbf{PSP} \; [\mathrm{mV}]$')
+
 
 def add_unit_current(ax, rnn, unit=0, trial=0):
 
@@ -56,12 +57,9 @@ def add_unit_current(ax, rnn, unit=0, trial=0):
         index of trial to plot
     """
 
-    ax.plot(rnn.V[unit,trial,:], 'k')
-    xmin, xmax = 0, rnn.nsteps
-    ax.hlines(rnn.thr, xmin, xmax, color='red')
-    ax.hlines(0, xmin, xmax, color='blue')
+    ax.plot(rnn.I_r[unit,trial,:], label=r'$R(t)$', color='blue')
+    ax.plot(rnn.ffwd[unit,trial,:], label=r'$F(t)$', color='red')
     ax.grid(which='both')
-    ax.set_ylabel('$\mathbf{V}\; [\mathrm{mV}]$')
 
 def add_unit_spikes(ax, rnn, unit=0, trial=0):
 
@@ -156,6 +154,50 @@ def add_activity(ax, spikes, trial=0, color='red'):
     """
 
     ax.plot(np.sum(spikes[:,trial,:], axis=0), color=color)
+
+def add_exin_rate_hist(ax, rnn, n_e, n_i, nbins=10):
+
+    """
+    Plot the histogram of firing rates for excitatory and inhibitory neurons
+
+    Parameters
+    ----------
+    ax : object,
+        matplotlib axis object
+    spikes : ndarray
+        tensor of spikes
+    trial : int, optional
+        index of trial to plot
+    color : str, optional
+        color for activity plot, defaults to red
+    """
+
+    #Excitatory neurons
+    rates = np.mean(rnn.Z[:n_e,:,:],axis=(1,2))/rnn.dt #average over trials and time
+    bins = np.linspace(rates.min(), rates.max(), nbins)
+    colors = cm.coolwarm(np.linspace(0,1,rnn.nsteps))
+    vals, bins = np.histogram(rates, bins=bins)
+    ax.plot(bins[:-1], vals, color='red', label='E')
+
+    #Inhibitory neurons
+    rates = np.mean(rnn.Z[n_e:,:,:],axis=(1,2))/rnn.dt #average over trials and time
+    bins = np.linspace(rates.min(), rates.max(), nbins)
+    colors = cm.coolwarm(np.linspace(0,1,rnn.nsteps))
+    vals, bins = np.histogram(rates, bins=bins)
+    ax.plot(bins[:-1], vals, color='blue', label='I')
+
+def add_exin_spectra(ax, x, n_e, n_i, nbins=10):
+
+    """
+    Plot the histogram cross correlation over many pairs of 1-dimensional sequences
+
+    Parameters
+    ----------
+    """
+
+    x_t = np.abs(np.fft.fft(x, axis=-1))
+    ax.plot(np.mean(x_t,axis=(0,1)))
+
 
 """
 Distributions of state variables

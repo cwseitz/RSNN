@@ -21,17 +21,6 @@ def unit_v_stats(cell, dv=0.01):
         rgb_array_3d = plt2array(fig)
         im[t] = rgb_array_3d
 
-def add_rate_hist(ax, cell, bins=20):
-
-    rates = np.mean(cell.Z,axis=1)
-    fig, ax = plt.subplots()
-    bins = np.linspace(rates.min(), rates.max(), bins)
-    colors = cm.coolwarm(np.linspace(0,1,cell.nsteps))
-    for t in range(cell.nsteps):
-        #idx = np.nonzero(clamp[:,0,t])
-        vals, bins = np.histogram(rates[:,t], bins=bins)
-        ax.plot(bins[:-1], vals, color=colors[t])
-
 def add_v_stats(ax, cell, dv=0.05):
 
     """
