@@ -240,7 +240,7 @@ class LIF(RNN):
 
             if i % 100 == 0:
                 print(f'Time step {i}')
-                
+
             i_in = self.ffwd[:,:,i-1]
             self.I_r[:,:,i-1] = np.matmul(self.J, self.Z[:,:,i-1])
 

@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.fft import fft, ifft
 
 ##################################################
 ## Library of general purpose math functions
@@ -8,28 +9,70 @@ import numpy as np
 ## Email: cwseitz@uchicago.edu
 ##################################################
 
-def cc(x):
+def block_fft(x, magnitude=False):
 
     """
-    Compute the cross-correlation function for all possible pairs in the
-    input tensor x using FFT (fast)
+    Computes the discrete fast fourier transform for a tensor
+    of synaptic currents with shape (N,trials,time). The transform
+    is computed along the time axis. Returns the complex valued
+    tensor, and the user is responsible for computing its magnitude
+    for conversion to power spectra
 
     Parameters
     ----------
-
     """
 
-    z1 = fft(x,axis=-1)
-    z_arr = []
+    x_t = fft(x,axis=-1)
+    if magnitude:
+        x_t = np.abs(x_t)
+    return x_t
+
+def block_spectra(x,magnitude=False):
+
+    """
+    Computes the cross-spectral densities and auto-spectral densities
+    given a tensor of synaptic currents with shape N,trials,time)
+    It is computed as the product of of all possible pairs in the frequency domain
+    with complex conjugation of the first signal
+
+    Parameters
+    ----------
+    """
+
+    x_t = block_fft(x,magnitude=False)
+    trials = x_t.shape[1]
+    nsteps = x_t.shape[-1]
+
+    arr = []
     #iterate over trials
-    for i in range(y1.shape[1]):
-        x3 = np.einsum('ij,kj->ikj',x1,x1.conj())
-        x3 = x3.reshape((x2.shape[0]*x2.shape[0],x2.shape[1]))
-        z3 = np.real(ifft(x3))
-        z_arr.append(z3)
-    z_arr = np.array(z_arr)
-    z_arr = np.swapaxes(z_arr,0,1)
-    return z_arr
+    for i in range(trials):
+        a = x_t[:,i,:].conj()
+        b = x_t[:,i,:]
+        c = np.einsum('ij,kj->ikj',a,b)
+        arr.append(c)
+    arr = np.array(arr)
+    arr = np.moveaxis(arr,0,2)
+
+    if magnitude:
+        arr = np.abs(arr)
+    arr /= nsteps #1/T factor
+
+    return arr
+
+def block_cc(x):
+
+    """
+    Computes the cross-correlation of a tensor of synaptic currents with shape
+    (N,trials,time) with itself along the time axis. It is computed by first
+    computing the cross spectrum and then transforming back into the time domain
+
+    Parameters
+    ----------
+    """
+
+    x_t = block_spectra(x,magnitude=False)
+    cc = np.real(ifft(x_t,axis=-1))
+    return cc
 
 def multi_gauss(X, mu, cov):
 

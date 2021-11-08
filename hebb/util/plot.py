@@ -82,28 +82,6 @@ def add_unit_spikes(ax, rnn, unit=0, trial=0):
     ax.grid(which='both')
     ax.set_ylabel('$\mathbf{Z}(t)$')
 
-def add_unit_refrac(ax, rnn, unit=0, trial=0):
-
-    """
-    Add the refractory variable of a single neuron
-
-    Parameters
-    ----------
-    ax : object,
-        matplotlib axis object
-    rnn : object,
-        RNN object
-    unit : int, optional
-        index of unit to plot
-    trial : int, optional
-        index of trial to plot
-    """
-
-    ax.plot(rnn.R[unit,trial,rnn.ref_steps:], 'k')
-    ax.grid(which='both')
-    ax.set_xlabel('t (ms)')
-    ax.set_ylabel('$\mathbf{R}(t)$')
-
 def add_raster(ax, spikes, trial=0, n_units=50):
 
     """
@@ -177,26 +155,175 @@ def add_exin_rate_hist(ax, rnn, n_e, n_i, nbins=10):
     bins = np.linspace(rates.min(), rates.max(), nbins)
     colors = cm.coolwarm(np.linspace(0,1,rnn.nsteps))
     vals, bins = np.histogram(rates, bins=bins)
-    ax.plot(bins[:-1], vals, color='red', label='E')
+    ax.plot(bins[:-1], vals, color='red', label=f'E ({np.round(np.mean(rates),2)})')
 
     #Inhibitory neurons
     rates = np.mean(rnn.Z[n_e:,:,:],axis=(1,2))/rnn.dt #average over trials and time
     bins = np.linspace(rates.min(), rates.max(), nbins)
     colors = cm.coolwarm(np.linspace(0,1,rnn.nsteps))
     vals, bins = np.histogram(rates, bins=bins)
-    ax.plot(bins[:-1], vals, color='blue', label='I')
+    ax.plot(bins[:-1], vals, color='blue', label=f'I ({np.round(np.mean(rates),2)})')
 
-def add_exin_spectra(ax, x, n_e, n_i, nbins=10):
+def add_ffwd_hist(ax, rnn, net):
 
     """
-    Plot the histogram cross correlation over many pairs of 1-dimensional sequences
+    Plot the average cross spectrum
 
     Parameters
     ----------
     """
 
-    x_t = np.abs(np.fft.fft(x, axis=-1))
-    ax.plot(np.mean(x_t,axis=(0,1)))
+    bins = np.arange(rnn.ffwd.min(),rnn.ffwd.max(),0.025)
+    vals, bins = np.histogram(rnn.ffwd[:net.n_e], bins=bins)
+    vals = vals/(np.sum(vals)*0.1) #normalize by integral
+    ax.plot(bins[:-1], vals, color='red', linestyle='-')
+
+    bins = np.arange(rnn.ffwd.min(),rnn.ffwd.max(),0.025)
+    vals, bins = np.histogram(rnn.ffwd[net.n_e:], bins=bins)
+    vals = vals/(np.sum(vals)*0.1) #normalize by integral
+    ax.plot(bins[:-1], vals, color='blue', linestyle='--')
+
+def add_rec_hist(ax, rnn, net):
+
+    """
+    Plot the average cross spectrum
+
+    Parameters
+    ----------
+    """
+
+    bins = np.arange(-5,5,0.1)
+    vals, bins = np.histogram(rnn.I_r[:net.n_e], bins=bins)
+    vals = vals/(np.sum(vals)*0.1) #normalize by integral
+    ax.plot(bins[:-1], vals, color='red')
+
+    bins = np.arange(-5,5,0.1)
+    vals, bins = np.histogram(rnn.I_r[net.n_e:], bins=bins)
+    vals = vals/(np.sum(vals)*0.1) #normalize by integral
+    ax.plot(bins[:-1], vals, color='blue')
+
+
+def add_cc_hist(ax, x, dt, color='red', rand_select=300):
+
+    """
+    Plot the average cross spectrum
+
+    Parameters
+    ----------
+    """
+
+    n = x.shape[0]
+    T = x.shape[-1]
+    if rand_select != None:
+        g = np.arange(0,n,1)
+        v = np.random.choice(g,size=(int(rand_select),),replace=False)
+        x = x[v,:,:]
+
+    #indices of off-diagonal elements
+    s = block_cc(x)
+    idx_x, idx_y = np.where(~np.eye(s.shape[0],dtype=bool))
+    s = s[idx_x,idx_y,:,:]
+
+    bins = np.arange(0,1,0.02)
+    vals, bins = np.histogram(s, bins=bins)
+    vals = vals/(np.sum(vals)*0.02) #normalize by integral
+    ax.plot(bins[:-1], vals, color=color)
+
+def add_mean_cc(ax, x, dt, color='red', rand_select=300):
+
+    """
+    Plot the average cross spectrum
+
+    Parameters
+    ----------
+    """
+
+    n = x.shape[0]
+    T = x.shape[-1]
+    if rand_select != None:
+        g = np.arange(0,n,1)
+        v = np.random.choice(g,size=(int(rand_select),),replace=False)
+        x = x[v,:,:]
+
+    #indices of off-diagonal elements
+    s = block_cc(x)
+    idx_x, idx_y = np.where(~np.eye(s.shape[0],dtype=bool))
+    s = s[idx_x,idx_y,:,:]
+    avg = np.mean(s, axis=(0,1))
+    ax.plot(avg, color=color)
+
+def add_mean_ac(ax, x, dt, color='red', rand_select=300):
+
+    """
+    Plot the average cross spectrum
+
+    Parameters
+    ----------
+    """
+
+    n = x.shape[0]
+    T = x.shape[-1]
+    if rand_select != None:
+        g = np.arange(0,n,1)
+        v = np.random.choice(g,size=(int(rand_select),),replace=False)
+        x = x[v,:,:]
+
+    #indices of off-diagonal elements
+    s = block_cc(x)
+    idx_x, idx_y = np.where(np.eye(s.shape[0],dtype=bool))
+    s = s[idx_x,idx_y,:,:]
+    avg = np.mean(s, axis=(0,1))
+    ax.plot(avg, color=color)
+
+def add_mean_cross_spectrum(ax, x, dt, color='red', rand_select=300):
+
+    """
+    Plot the average cross spectrum
+
+    Parameters
+    ----------
+    """
+
+    n = x.shape[0]
+    T = x.shape[-1]
+    if rand_select != None:
+        g = np.arange(0,n,1)
+        v = np.random.choice(g,size=(int(rand_select),),replace=False)
+        x = x[v,:,:]
+
+    freq = np.fft.fftfreq(x.shape[-1], d=dt)
+    #indices of off-diagonal elements
+    s = block_spectra(x, magnitude=True)
+    idx_x, idx_y = np.where(~np.eye(s.shape[0],dtype=bool))
+    s = s[idx_x,idx_y,:,:]
+    avg = np.mean(s, axis=(0,1))
+    ax.plot(freq[1:T//2],avg[1:T//2], color=color)
+    ax.set_ylim([0,avg[1:T//2].max()])
+
+def add_mean_auto_spectrum(ax, x, dt, color='red', rand_select=300):
+
+    """
+    Plot the mean autospectrum
+
+    Parameters
+    ----------
+    """
+
+    freq = np.fft.fftfreq(x.shape[-1], d=dt)
+    n = x.shape[0]
+    T = x.shape[-1]
+    if rand_select != None:
+        g = np.arange(0,n,1)
+        v = np.random.choice(g,size=(int(rand_select),),replace=False)
+        x = x[v,:,:]
+
+    #indices of diagonal elements
+    s = block_spectra(x, magnitude=True)
+    idx_x, idx_y = np.where(np.eye(s.shape[0],dtype=bool))
+    s = s[idx_x,idx_y,:,:]
+    avg = np.mean(s, axis=(0,1))
+    ax.plot(freq[1:T//2],avg[1:T//2], color=color)
+    ax.set_ylim([0,avg[1:T//2].max()])
 
 
 """

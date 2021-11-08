@@ -708,21 +708,20 @@ def fig_7(ffwd,net,rnn):
     """
 
     fig = plt.figure(figsize=(5,7))
-    gs = fig.add_gridspec(8,4, wspace=1, hspace=3)
+    gs = fig.add_gridspec(6,4, wspace=1, hspace=3)
     ax0 = fig.add_subplot(gs[:2, :])
-    ax1 = fig.add_subplot(gs[2:4, :])
-    ax2 = fig.add_subplot(gs[4:6, :2])
-    ax3 = fig.add_subplot(gs[4:6, 2:])
-    ax4 = fig.add_subplot(gs[6:8, :2])
-    ax5 = fig.add_subplot(gs[6:8, 2:])
+    ax1 = fig.add_subplot(gs[2:4, :2])
+    ax2 = fig.add_subplot(gs[2:3, 2:])
+    ax5 = fig.add_subplot(gs[3:4, 2:])
+    ax3 = fig.add_subplot(gs[4:6, :2])
+    ax4 = fig.add_subplot(gs[4:6, 2:])
 
-
-    add_raster(ax0, rnn.Z, n_units=100)
+    add_raster(ax0, rnn.Z, n_units=200)
     add_unit_current(ax1,rnn)
-    add_unit_voltage(ax2,rnn)
-    add_exin_rate_hist(ax3,rnn,net.n_e,net.n_i)
-    add_cc_hist(ax4,ffwd)
-    add_cc_hist(ax4,rnn.I_r)
+    add_ffwd_hist(ax2,rnn,net)
+    add_rec_hist(ax5,rnn,net)
+    add_unit_voltage(ax3,rnn)
+    add_exin_rate_hist(ax4,rnn,net.n_e,net.n_i)
 
     format_ax(ax0,
               xlabel=r'Time $(\mathrm{ms})$',
@@ -734,40 +733,175 @@ def fig_7(ffwd,net,rnn):
               ax_is_box=False)
     ax1.legend(loc='upper right')
     format_ax(ax2,
+              xlabel='$\mathbf{PSP} \; [\mathrm{mV}]$',
+              ylabel='Counts',
+              ax_is_box=False)
+    format_ax(ax3,
               xlabel=r'Time $(\mathrm{ms})$',
               ylabel='$\mathbf{V} \; [\mathrm{mV}]$',
               ax_is_box=False)
-    format_ax(ax3,
+    format_ax(ax4,
               xlabel=r'Rate $(\mathrm{Hz})$',
               ylabel='Counts',
               ax_is_box=False)
+
     ax3.legend(loc='upper right')
+    format_ax(ax5,
+              xlabel='$\mathbf{PSP} \; [\mathrm{mV}]$',
+              ylabel='Counts',
+              ax_is_box=False)
     plt.tight_layout()
 
-    #ax1.plot(rnn.I[0,0,:],color='blue',alpha=0.5)
 
-    #compute degree distributions
-    # n_e = int(round(net.p_e*net.N))
-    # ee = np.sum(net.C[:n_e,:n_e], axis=1)
-    # ei = np.sum(net.C[n_e:,:n_e], axis=1)
-    # ie = np.sum(net.C[:n_e,n_e:], axis=1)
-    # ii = np.sum(net.C[n_e:,n_e:], axis=1)
+def fig_8(ffwd,net,rnn):
 
-    # ax2.hist(ee, label=r'$E\rightarrow E$', density=True)
-    # ax2.hist(ei, label=r'$E\rightarrow I$', density=True)
-    # ax2.legend()
-    # ax3.hist(ie, label=r'$I\rightarrow E$', density=True)
-    # ax3.hist(ii, label=r'$I\rightarrow I$', density=True)
-    # ax3.legend()
+    """
+    Cross and autospectra for the fixed excitatory-inhibitory network
 
-    # ee = np.sum(exinrand.C[:n_e,:n_e], axis=1)
-    # ei = np.sum(exinrand.C[n_e:,:n_e], axis=1)
-    # ie = np.sum(exinrand.C[:n_e,n_e:], axis=1)
-    # ii = np.sum(exinrand.C[n_e:,n_e:], axis=1)
-    #
-    # ax[1,0].hist(ee, label=r'$E\leftarrow E$', density=True)
-    # ax[1,0].hist(ie, label=r'$I\leftarrow E$', density=True)
-    # ax[1,0].legend()
-    # ax[1,1].hist(ei, label=r'$E\leftarrow I$', density=True)
-    # ax[1,1].hist(ii, label=r'$I\leftarrow I$', density=True)
-    # ax[1,1].legend()
+    Parameters
+    ----------
+    N : int, optional
+        Number of neurons in the network
+    """
+
+    fig = plt.figure(figsize=(5,7))
+    gs = fig.add_gridspec(6,4, wspace=1, hspace=3)
+    ax4 = fig.add_subplot(gs[0:2, :2])
+    ax5 = fig.add_subplot(gs[0:2, 2:])
+    ax6 = fig.add_subplot(gs[2:4, :2])
+    ax7 = fig.add_subplot(gs[2:4, 2:])
+    ax8 = fig.add_subplot(gs[4:6, :2])
+    ax9 = fig.add_subplot(gs[4:6, 2:])
+
+    #cross spectra of ffwd excitatory currents
+    add_mean_cross_spectrum(ax4, rnn.ffwd[:net.n_e,:,:],rnn.dt,color='red')
+    #cross spectra of ffwd inhibitory currents
+    add_mean_cross_spectrum(ax4, rnn.ffwd[net.n_e:,:,:],rnn.dt,color='blue')
+
+    #auto spectra of ffwd excitatory currents
+    add_mean_auto_spectrum(ax5, rnn.ffwd[:net.n_e,:,:],rnn.dt,color='red')
+    #auto spectra of ffwd inhibitory currents
+    add_mean_auto_spectrum(ax5, rnn.ffwd[net.n_e:,:,:],rnn.dt,color='blue')
+
+    #cross spectra of ffwd excitatory currents
+    add_mean_cross_spectrum(ax6, rnn.I_r[:net.n_e,:,:],rnn.dt,color='red')
+    #cross spectra of I_r inhibitory currents
+    add_mean_cross_spectrum(ax6, rnn.I_r[net.n_e:,:,:],rnn.dt,color='blue')
+
+    #auto spectra of I_r excitatory currents
+    add_mean_auto_spectrum(ax7, rnn.I_r[:net.n_e,:,:],rnn.dt,color='red')
+    #auto spectra of I_r inhibitory currents
+    add_mean_auto_spectrum(ax7, rnn.I_r[net.n_e:,:,:],rnn.dt,color='blue')
+
+    #cross spectra of ffwd excitatory currents
+    add_mean_cross_spectrum(ax8, rnn.I_r[:net.n_e,:,:]+rnn.ffwd[:net.n_e,:,:],rnn.dt,color='red')
+    #cross spectra of I_r inhibitory currents
+    add_mean_cross_spectrum(ax8, rnn.I_r[net.n_e:,:,:]+rnn.ffwd[net.n_e:,:,:],rnn.dt,color='blue')
+
+    #auto spectra of ffwd excitatory currents
+    add_mean_auto_spectrum(ax9, rnn.I_r[:net.n_e,:,:]+rnn.ffwd[:net.n_e,:,:],rnn.dt,color='red')
+    #auto spectra of I_r inhibitory currents
+    add_mean_auto_spectrum(ax9, rnn.I_r[net.n_e:,:,:]+rnn.ffwd[net.n_e:,:,:],rnn.dt,color='blue')
+
+
+    format_ax(ax4,
+              xlabel=r'Frequency $(\mathrm{Hz})$',
+              ylabel='Power',
+              ax_is_box=False)
+    format_ax(ax5,
+              xlabel=r'Frequency $(\mathrm{Hz})$',
+              ylabel='Power',
+              ax_is_box=False)
+    format_ax(ax6,
+              xlabel=r'Frequency $(\mathrm{Hz})$',
+              ylabel='Power',
+              ax_is_box=False)
+    format_ax(ax7,
+              xlabel=r'Frequency $(\mathrm{Hz})$',
+              ylabel='Power',
+              ax_is_box=False)
+    format_ax(ax8,
+              xlabel=r'Frequency $(\mathrm{Hz})$',
+              ylabel='Power',
+              ax_is_box=False)
+    format_ax(ax9,
+              xlabel=r'Frequency $(\mathrm{Hz})$',
+              ylabel='Power',
+              ax_is_box=False)
+    plt.tight_layout()
+
+def fig_9(ffwd,net,rnn):
+
+    """
+    Cross and auto-correlations for the fixed excitatory-inhibitory network
+
+    Parameters
+    ----------
+    N : int, optional
+        Number of neurons in the network
+    """
+
+    fig = plt.figure(figsize=(5,7))
+    gs = fig.add_gridspec(6,4, wspace=1, hspace=3)
+    ax4 = fig.add_subplot(gs[0:2, :2])
+    ax5 = fig.add_subplot(gs[0:2, 2:])
+    ax6 = fig.add_subplot(gs[2:4, :2])
+    ax7 = fig.add_subplot(gs[2:4, 2:])
+    ax8 = fig.add_subplot(gs[4:6, :2])
+    ax9 = fig.add_subplot(gs[4:6, 2:])
+
+    #cross correlation of recurrent excitatory currents
+    add_mean_cc(ax4, rnn.I_r[:net.n_e,:,:],rnn.dt,color='red')
+    #cross correlation of recurrent inhibitory currents
+    add_mean_cc(ax4, rnn.I_r[net.n_e:,:,:],rnn.dt,color='blue')
+
+    #cross correlation of total excitatory currents
+    add_mean_cc(ax6, rnn.I_r[:net.n_e,:,:]+rnn.ffwd[:net.n_e,:,:],rnn.dt,color='red')
+    #cross correlation of total inhibitory currents
+    add_mean_cc(ax6, rnn.I_r[net.n_e:,:,:]+rnn.ffwd[net.n_e:,:,:],rnn.dt,color='blue')
+
+    #autocorrelation of recurrent excitatory currents
+    add_mean_ac(ax5, rnn.I_r[:net.n_e,:,:],rnn.dt,color='red')
+    #autocorrelation of recurrent inhibitory currents
+    add_mean_ac(ax5, rnn.I_r[net.n_e:,:,:],rnn.dt,color='blue')
+
+    #autocorrelation of total excitatory currents
+    add_mean_ac(ax7, rnn.I_r[:net.n_e,:,:]+rnn.ffwd[:net.n_e,:,:],rnn.dt,color='red')
+    #autocorrelation of total inhibitory currents
+    add_mean_ac(ax7, rnn.I_r[net.n_e:,:,:]+rnn.ffwd[net.n_e:,:,:],rnn.dt,color='blue')
+
+    #histogram of cross-correlations of recurrent excitatory currents
+    add_cc_hist(ax8, rnn.I_r[:net.n_e,:,:],rnn.dt,color='red')
+    #histogram of cross-correlations of recurrent inhibitory currents
+    add_cc_hist(ax8, rnn.I_r[net.n_e:,:,:],rnn.dt,color='blue')
+
+    #histogram of cross-correlations of total excitatory currents
+    add_cc_hist(ax9, rnn.I_r[:net.n_e,:,:]+rnn.ffwd[:net.n_e,:,:],rnn.dt,color='red')
+    #histogram of cross-correlations of total inhibitory currents
+    add_cc_hist(ax9, rnn.I_r[net.n_e:,:,:]+rnn.ffwd[net.n_e:,:,:],rnn.dt,color='blue')
+
+    format_ax(ax4,
+              xlabel=r'Lag $\tau (\mathrm{ms})$',
+              ylabel=r'$\langle\mathrm{CC}(\tau)\rangle$',
+              ax_is_box=False)
+    format_ax(ax5,
+              xlabel=r'Lag $\tau (\mathrm{ms})$',
+              ylabel=r'$\langle\mathrm{CC}(\tau)\rangle$',
+              ax_is_box=False)
+    format_ax(ax6,
+              xlabel=r'Lag $\tau (\mathrm{ms})$',
+              ylabel=r'$\langle\mathrm{CC}(\tau)\rangle$',
+              ax_is_box=False)
+    format_ax(ax7,
+              xlabel=r'Lag $\tau (\mathrm{ms})$',
+              ylabel=r'$\langle\mathrm{CC}(\tau)\rangle$',
+              ax_is_box=False)
+    format_ax(ax8,
+              xlabel=r'$\mathrm{CC}(\tau)$',
+              ylabel='Normalized count',
+              ax_is_box=False)
+    format_ax(ax9,
+              xlabel=r'$\mathrm{CC}(\tau)$',
+              ylabel='Normalized count',
+              ax_is_box=False)
+    plt.tight_layout()
