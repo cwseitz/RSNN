@@ -242,11 +242,13 @@ class LIF(RNN):
                 print(f'Time step {i}')
 
             i_in = self.ffwd[:,:,i-1]
-            self.I_r[:,:,i-1] = np.matmul(self.J, self.Z[:,:,i-1])
+            self.I_r[:,:,i] = np.matmul(self.J, self.Z[:,:,i-1])
 
-            #update neuron voltages
-            self.V[:,:,i] = self.V[:,:,i-1] - self.dt*self.V[:,:,i-1]/self.tau +\
-                            self.ffwd[:,:,i-1] + self.I_r[:,:,i-1]
+            # #update neuron voltages
+            # self.V[:,:,i] = self.V[:,:,i-1] - self.dt*self.V[:,:,i-1]/self.tau +\
+            #                 self.ffwd[:,:,i-1] + self.I_r[:,:,i-1]
+
+            self.V[:,:,i] = self.V[:,:,i-1] + (self.ffwd[:,:,i] + self.I_r[:,:,i])*(self.dt/self.tau)
 
             #find the neurons which spiked in the last ref_steps time steps
             if i > self.ref_steps:

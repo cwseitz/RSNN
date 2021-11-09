@@ -82,7 +82,30 @@ def add_unit_spikes(ax, rnn, unit=0, trial=0):
     ax.grid(which='both')
     ax.set_ylabel('$\mathbf{Z}(t)$')
 
-def add_raster(ax, spikes, trial=0, n_units=50):
+def add_exin_rates(ax, rnn, n_e, n_i):
+
+    """
+    Add the spikes of a single neuron
+
+    Parameters
+    ----------
+    ax : object,
+        matplotlib axis object
+    rnn : object,
+        RNN object
+    unit : int, optional
+        index of unit to plot
+    trial : int, optional
+        index of trial to plot
+    """
+
+    r_e = np.sum(rnn.Z[:n_e,0,:], axis=0)
+    r_i = np.sum(rnn.Z[n_e:,0,:], axis=0)
+    ax.grid(which='both')
+    ax.plot(r_e, color='red', alpha=0.5)
+    ax.plot(r_i, color='blue', alpha=0.5)
+
+def add_raster(ax, spikes, trial=0, color='black', n_units=50):
 
     """
     Generate a raster plot by randomly selecting 'n_units'
@@ -112,7 +135,7 @@ def add_raster(ax, spikes, trial=0, n_units=50):
         spike_times = np.argwhere(spikes[unit,trial,:] > 0)
         spike_times = spike_times.reshape((spike_times.shape[0],))
         arr.append(spike_times)
-        ax.eventplot(arr, colors='black', orientation='horizontal', lineoffsets=1, linelengths=1)
+        ax.eventplot(arr, colors=color, orientation='horizontal', lineoffsets=1, linelengths=1)
 
 def add_activity(ax, spikes, trial=0, color='red'):
 
@@ -183,24 +206,28 @@ def add_ffwd_hist(ax, rnn, net):
     vals = vals/(np.sum(vals)*0.1) #normalize by integral
     ax.plot(bins[:-1], vals, color='blue', linestyle='--')
 
-def add_rec_hist(ax, rnn, net):
+def add_total_hist(ax, rnn, net):
 
     """
-    Plot the average cross spectrum
+    Plot the average total input current
 
     Parameters
     ----------
     """
 
-    bins = np.arange(-5,5,0.1)
-    vals, bins = np.histogram(rnn.I_r[:net.n_e], bins=bins)
-    vals = vals/(np.sum(vals)*0.1) #normalize by integral
-    ax.plot(bins[:-1], vals, color='red')
+    e_total = rnn.I_r[:net.n_e]+rnn.ffwd[:net.n_e]
+    bins = np.arange(-1,1,0.05)
+    colors = cm.coolwarm(np.linspace(0,1,rnn.nsteps))
+    for i in range(rnn.nsteps):
+        vals, bins = np.histogram(e_total[i], bins=bins)
+        vals = vals/(np.sum(vals)*0.1) #normalize by integral
+        ax.plot(bins[:-1], vals, color=colors[i])
 
-    bins = np.arange(-5,5,0.1)
-    vals, bins = np.histogram(rnn.I_r[net.n_e:], bins=bins)
-    vals = vals/(np.sum(vals)*0.1) #normalize by integral
-    ax.plot(bins[:-1], vals, color='blue')
+    # i_total = rnn.I_r[net.n_e:]+rnn.ffwd[net.n_e:]
+    # bins = np.arange(i_total.min(),i_total.max(),0.1)
+    # vals, bins = np.histogram(i_total, bins=bins)
+    # vals = vals/(np.sum(vals)*0.1) #normalize by integral
+    # ax.plot(bins[:-1], vals, color='blue')
 
 
 def add_cc_hist(ax, x, dt, color='red', rand_select=300):

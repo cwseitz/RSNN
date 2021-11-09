@@ -708,24 +708,31 @@ def fig_7(ffwd,net,rnn):
     """
 
     fig = plt.figure(figsize=(5,7))
-    gs = fig.add_gridspec(6,4, wspace=1, hspace=3)
+    gs = fig.add_gridspec(8,4, wspace=1, hspace=3)
     ax0 = fig.add_subplot(gs[:2, :])
-    ax1 = fig.add_subplot(gs[2:4, :2])
-    ax2 = fig.add_subplot(gs[2:3, 2:])
-    ax5 = fig.add_subplot(gs[3:4, 2:])
-    ax3 = fig.add_subplot(gs[4:6, :2])
-    ax4 = fig.add_subplot(gs[4:6, 2:])
+    ax6 = fig.add_subplot(gs[2:4, :])
+    ax1 = fig.add_subplot(gs[4:6, :2])
+    ax2 = fig.add_subplot(gs[4:5, 2:])
+    ax5 = fig.add_subplot(gs[5:6, 2:])
+    ax3 = fig.add_subplot(gs[6:8, :2])
+    ax4 = fig.add_subplot(gs[6:8, 2:])
 
-    add_raster(ax0, rnn.Z, n_units=200)
+    add_raster(ax0, rnn.Z[:net.n_e], color='red', n_units=100)
+    add_raster(ax6, rnn.Z[net.n_e:], color='blue', n_units=100)
     add_unit_current(ax1,rnn)
     add_ffwd_hist(ax2,rnn,net)
-    add_rec_hist(ax5,rnn,net)
+    add_total_hist(ax5,rnn,net)
     add_unit_voltage(ax3,rnn)
     add_exin_rate_hist(ax4,rnn,net.n_e,net.n_i)
+    #add_exin_rates(ax4,rnn,net.n_e,net.n_i)
 
     format_ax(ax0,
               xlabel=r'Time $(\mathrm{ms})$',
-              ylabel='Neuron',
+              ylabel='E Neuron',
+              ax_is_box=True)
+    format_ax(ax6,
+              xlabel=r'Time $(\mathrm{ms})$',
+              ylabel='I Neuron',
               ax_is_box=True)
     format_ax(ax1,
               xlabel=r'Time $(\mathrm{ms})$',
@@ -740,6 +747,10 @@ def fig_7(ffwd,net,rnn):
               xlabel=r'Time $(\mathrm{ms})$',
               ylabel='$\mathbf{V} \; [\mathrm{mV}]$',
               ax_is_box=False)
+    # format_ax(ax4,
+    #           xlabel=r'Time $(\mathrm{sec})$',
+    #           ylabel=r'Rate $(\mathrm{Hz})$',
+    #           ax_is_box=False)
     format_ax(ax4,
               xlabel=r'Rate $(\mathrm{Hz})$',
               ylabel='Counts',

@@ -9,6 +9,31 @@ from scipy.fft import fft, ifft
 ## Email: cwseitz@uchicago.edu
 ##################################################
 
+def mean_field_rates(N, mxe, mxi, w_ee, w_ii, w_ei, w_ie, thr, tau_e, tau_i):
+
+    """
+    Computes the mean rates of excitatory and inhbitory neurons
+    in the mean-field approximation
+
+    Parameters
+    ----------
+    """
+
+    r_e = (mxe*w_ii - mxi*w_ie)/(w_ei*w_ie - w_ee*w_ii)
+    r_i = (mxe*w_ei - mxi*w_ee)/(w_ei*w_ie - w_ee*w_ii)
+
+    # a = mxe*w_ii - mxi*w_ie
+    # b = mxe*w_ei - mxi*w_ee
+    # c = w_ei*w_ie - w_ee*w_ii
+
+    # r_e = (a - mxe*thr*tau_i/np.sqrt(N))
+    # r_e /= c + thr*(w_ee*tau_e + w_ii*tau_e)/np.sqrt(N) - (tau_e*tau_i*thr**2)/N
+    #
+    # r_i = (b - mxi*thr*tau_e/np.sqrt(N))
+    # r_i /= c + thr*(w_ee*tau_i + w_ii*tau_i)/np.sqrt(N) - (tau_e*tau_i*thr**2)/N
+
+    return r_e, r_i
+
 def block_fft(x, magnitude=False):
 
     """
