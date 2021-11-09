@@ -29,11 +29,11 @@ v0=0 #mv
 thr=10 #mv
 
 #Network parameters
-N=4000
+N=20000
 p_e=0.5
 j_ee=12.5
-j_ei=20
-j_ie=50
+j_ei=50
+j_ie=20
 j_ii=50
 
 p_ee=0.25
@@ -47,14 +47,17 @@ w_ie=j_ie*p_ie*(1-p_e)
 w_ii=j_ii*p_ii*(1-p_e)
 
 #Timescale, mean and variance of ffwd input
-mxe=0.015*np.sqrt(N)
-mxi=0.01*np.sqrt(N)
+mxe0 = 0.015
+mxi0 = 0.010
+mxe=mxe0*np.sqrt(N)
+mxi=mxi0*np.sqrt(N)
 vxe=0.05
 vxi=0.05
 
-#Check mean field firing rates
-r_e = (mxe*j_ii - mxi*j_ie)/(j_ei*j_ie - j_ee*j_ii)
-r_i = (mxe*j_ei - mxi*j_ee)/(j_ei*j_ie - j_ee*j_ii)
+r_e, r_i = mean_field_rates(N, mxe0, mxi0, w_ee, w_ii, w_ei, w_ie, thr, tau, tau)
+print(f'w_ee:{w_ee}, w_ei:{w_ei}, w_ie:{w_ie}, w_ii:{w_ii}')
+print(f'w_ii/w_ee = {w_ii/w_ee} (must be greater than 1)')
+print(f'Ratio check: {mxe/mxi}>{w_ie/w_ii}>{w_ee/w_ei}')
 print(f'MFT: Excitatory rate: {r_e}, Inhibitory rate: {r_i}')
 
 ##########
