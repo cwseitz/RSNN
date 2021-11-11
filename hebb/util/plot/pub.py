@@ -696,7 +696,7 @@ def fig_6(rnn, net, focal=0):
 
     plt.tight_layout()
 
-def fig_7(ffwd,net,rnn):
+def fig_7(ffwd, rnn):
 
     """
     Summarize the random excitatory-inhibitory network
@@ -708,60 +708,42 @@ def fig_7(ffwd,net,rnn):
     """
 
     fig = plt.figure(figsize=(5,7))
-    gs = fig.add_gridspec(8,4, wspace=1, hspace=3)
-    ax0 = fig.add_subplot(gs[:2, :])
-    ax6 = fig.add_subplot(gs[2:4, :])
-    ax1 = fig.add_subplot(gs[4:6, :2])
-    ax2 = fig.add_subplot(gs[4:5, 2:])
-    ax5 = fig.add_subplot(gs[5:6, 2:])
-    ax3 = fig.add_subplot(gs[6:8, :2])
-    ax4 = fig.add_subplot(gs[6:8, 2:])
+    gs = fig.add_gridspec(7,4, wspace=1, hspace=3)
+    ax0 = fig.add_subplot(gs[:3, :])
+    ax1 = fig.add_subplot(gs[3:5, :2])
+    ax2 = fig.add_subplot(gs[3:5, 2:])
+    ax3 = fig.add_subplot(gs[5:7, :2])
+    ax4 = fig.add_subplot(gs[5:7, 2:])
 
-    add_raster(ax0, rnn.Z[:net.n_e], color='red', n_units=100)
-    add_raster(ax6, rnn.Z[net.n_e:], color='blue', n_units=100)
-    add_unit_current(ax1,rnn)
-    add_ffwd_hist(ax2,rnn,net)
-    add_total_hist(ax5,rnn,net)
-    add_unit_voltage(ax3,rnn)
-    add_exin_rate_hist(ax4,rnn,net.n_e,net.n_i)
-    #add_exin_rates(ax4,rnn,net.n_e,net.n_i)
+    add_raster(ax0, rnn.spikes[:250], color='black')
+    add_avg_current(ax1,rnn,ffwd)
+    add_ffwd_hist(ax2,ffwd)
+    add_total_hist(ax2,ffwd,rnn.I_e,rnn.I_i)
+    add_rate_hist(ax3,rnn)
+    add_unit_voltage(ax4,rnn,unit=10,color='purple')
+    add_unit_voltage(ax4,rnn,unit=20,color='black')
 
-    format_ax(ax0,
-              xlabel=r'Time $(\mathrm{ms})$',
-              ylabel='E Neuron',
-              ax_is_box=True)
-    format_ax(ax6,
-              xlabel=r'Time $(\mathrm{ms})$',
-              ylabel='I Neuron',
-              ax_is_box=True)
+
     format_ax(ax1,
-              xlabel=r'Time $(\mathrm{ms})$',
-              ylabel='$\mathbf{PSP} \; [\mathrm{mV}]$',
+              xlabel=r'$\mathrm{Time} \;(\mathrm{ms})$',
+              ylabel=r'$\langle R(t) \rangle \; [\mathrm{mV}]$',
               ax_is_box=False)
-    ax1.legend(loc='upper right')
+
     format_ax(ax2,
               xlabel='$\mathbf{PSP} \; [\mathrm{mV}]$',
-              ylabel='Counts',
-              ax_is_box=False)
-    format_ax(ax3,
-              xlabel=r'Time $(\mathrm{ms})$',
-              ylabel='$\mathbf{V} \; [\mathrm{mV}]$',
-              ax_is_box=False)
-    # format_ax(ax4,
-    #           xlabel=r'Time $(\mathrm{sec})$',
-    #           ylabel=r'Rate $(\mathrm{Hz})$',
-    #           ax_is_box=False)
-    format_ax(ax4,
-              xlabel=r'Rate $(\mathrm{Hz})$',
-              ylabel='Counts',
+              ylabel=r'$\mathrm{Counts}$',
               ax_is_box=False)
 
-    ax3.legend(loc='upper right')
-    format_ax(ax5,
-              xlabel='$\mathbf{PSP} \; [\mathrm{mV}]$',
-              ylabel='Counts',
+    format_ax(ax3,
+              xlabel=r'$\mathrm{Firing\; Rate} \; [\mathrm{Hz}]$',
+              ylabel=r'$\mathrm{Counts}$',
               ax_is_box=False)
-    plt.tight_layout()
+    ax3.legend(loc='upper right')
+
+    format_ax(ax4,
+              xlabel=r'$\mathrm{Time}\; (\mathrm{ms})$',
+              ylabel=r'$\mathbf{V} [\mathrm{mV}]$',
+              ax_is_box=False)
 
 
 def fig_8(ffwd,net,rnn):

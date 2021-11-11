@@ -3,7 +3,7 @@ import numpy as np
 import networkx as nx
 from matplotlib import cm
 from operator import itemgetter
-from .math import *
+from ..math import *
 
 ##################################################
 ## Library of functions that add specific subplots
@@ -17,6 +17,11 @@ from .math import *
 """
 Neuron state variables in time
 """
+
+def add_avg_current(ax, rnn, ffwd, trial=0):
+
+    ax.plot(np.mean(rnn.I_e[:,0,:],axis=0), color='red')
+    ax.plot(np.mean(rnn.I_i[:,0,:],axis=0), color='blue')
 
 def add_unit_voltage(ax, rnn, unit=0, trial=0, color='black'):
 
@@ -36,11 +41,10 @@ def add_unit_voltage(ax, rnn, unit=0, trial=0, color='black'):
     """
 
     ax.plot(rnn.V[unit,trial,:], color=color)
-    ax.plot(rnn.thr*2*rnn.Z[unit,trial,:], color='red', linestyle='-')
     ax.grid(which='both')
 
 
-def add_unit_current(ax, rnn, unit=0, trial=0):
+def add_unit_current(ax, ffwd, rnn, unit=0, trial=0):
 
     """
     Add the current trace for a single neuron
@@ -58,7 +62,7 @@ def add_unit_current(ax, rnn, unit=0, trial=0):
     """
 
     ax.plot(rnn.I_r[unit,trial,:], label=r'$R(t)$', color='blue')
-    ax.plot(rnn.ffwd[unit,trial,:], label=r'$F(t)$', color='red')
+    ax.plot(ffwd[unit,trial,:], label=r'$F(t)$', color='red')
     ax.grid(which='both')
 
 def add_unit_spikes(ax, rnn, unit=0, trial=0):
@@ -105,7 +109,7 @@ def add_exin_rates(ax, rnn, n_e, n_i):
     ax.plot(r_e, color='red', alpha=0.5)
     ax.plot(r_i, color='blue', alpha=0.5)
 
-def add_raster(ax, spikes, trial=0, color='black', n_units=50):
+def add_raster(ax, spikes, trial=0, color='black'):
 
     """
     Generate a raster plot by randomly selecting 'n_units'
@@ -128,10 +132,9 @@ def add_raster(ax, spikes, trial=0, color='black', n_units=50):
         number of units to plot raster, defaults to 50
     """
 
-    units = np.random.choice(spikes.shape[0], n_units, replace=False)
-    sub = spikes[units,:,:]
+    units = spikes.shape[0]
     arr = []
-    for unit in units:
+    for unit in range(units):
         spike_times = np.argwhere(spikes[unit,trial,:] > 0)
         spike_times = spike_times.reshape((spike_times.shape[0],))
         arr.append(spike_times)
@@ -156,38 +159,21 @@ def add_activity(ax, spikes, trial=0, color='red'):
 
     ax.plot(np.sum(spikes[:,trial,:], axis=0), color=color)
 
-def add_exin_rate_hist(ax, rnn, n_e, n_i, nbins=10):
+def add_rate_hist(ax, rnn, nbins=10):
 
     """
     Plot the histogram of firing rates for excitatory and inhibitory neurons
 
     Parameters
     ----------
-    ax : object,
-        matplotlib axis object
-    spikes : ndarray
-        tensor of spikes
-    trial : int, optional
-        index of trial to plot
-    color : str, optional
-        color for activity plot, defaults to red
     """
 
-    #Excitatory neurons
-    rates = np.mean(rnn.Z[:n_e,:,:],axis=(1,2))/rnn.dt #average over trials and time
+    rates = np.mean(rnn.spikes,axis=(1,2))/rnn.dt #average over trials and time
     bins = np.linspace(rates.min(), rates.max(), nbins)
-    colors = cm.coolwarm(np.linspace(0,1,rnn.nsteps))
     vals, bins = np.histogram(rates, bins=bins)
-    ax.plot(bins[:-1], vals, color='red', label=f'E ({np.round(np.mean(rates),2)})')
+    ax.plot(bins[:-1], vals, color='black', label=f'E ({np.round(np.mean(rates),2)})')
 
-    #Inhibitory neurons
-    rates = np.mean(rnn.Z[n_e:,:,:],axis=(1,2))/rnn.dt #average over trials and time
-    bins = np.linspace(rates.min(), rates.max(), nbins)
-    colors = cm.coolwarm(np.linspace(0,1,rnn.nsteps))
-    vals, bins = np.histogram(rates, bins=bins)
-    ax.plot(bins[:-1], vals, color='blue', label=f'I ({np.round(np.mean(rates),2)})')
-
-def add_ffwd_hist(ax, rnn, net):
+def add_ffwd_hist(ax, ffwd):
 
     """
     Plot the average cross spectrum
@@ -196,38 +182,34 @@ def add_ffwd_hist(ax, rnn, net):
     ----------
     """
 
-    bins = np.arange(rnn.ffwd.min(),rnn.ffwd.max(),0.025)
-    vals, bins = np.histogram(rnn.ffwd[:net.n_e], bins=bins)
-    vals = vals/(np.sum(vals)*0.1) #normalize by integral
-    ax.plot(bins[:-1], vals, color='red', linestyle='-')
+    bins = np.arange(np.array(ffwd.Ix1e).min(),np.array(ffwd.Ix1e).max(),0.025)
+    vals, bins = np.histogram(ffwd.Ix1e, bins=bins)
+    vals = vals/(np.sum(vals)*0.025) #normalize by integral
+    ax.plot(bins[:-1], vals, color='red', linestyle='--')
 
-    bins = np.arange(rnn.ffwd.min(),rnn.ffwd.max(),0.025)
-    vals, bins = np.histogram(rnn.ffwd[net.n_e:], bins=bins)
-    vals = vals/(np.sum(vals)*0.1) #normalize by integral
+    bins = np.arange(np.array(ffwd.Ix1i).min(),np.array(ffwd.Ix1i).max(),0.025)
+    vals, bins = np.histogram(ffwd.Ix1i, bins=bins)
+    vals = vals/(np.sum(vals)*0.025) #normalize by integral
     ax.plot(bins[:-1], vals, color='blue', linestyle='--')
 
-def add_total_hist(ax, rnn, net):
+def add_total_hist(ax, ffwd, I_e, I_i):
 
     """
-    Plot the average total input current
+    Plot the histogram of recurrent inputs
 
     Parameters
     ----------
     """
 
-    e_total = rnn.I_r[:net.n_e]+rnn.ffwd[:net.n_e]
-    bins = np.arange(-1,1,0.05)
-    colors = cm.coolwarm(np.linspace(0,1,rnn.nsteps))
-    for i in range(rnn.nsteps):
-        vals, bins = np.histogram(e_total[i], bins=bins)
-        vals = vals/(np.sum(vals)*0.1) #normalize by integral
-        ax.plot(bins[:-1], vals, color=colors[i])
+    bins = np.arange(I_e.min(),I_e.max(),0.1)
+    vals, bins = np.histogram(I_e, bins=bins)
+    vals = vals/(np.sum(vals)*0.1) #normalize by integral
+    ax.plot(bins[:-1], vals, color='red')
 
-    # i_total = rnn.I_r[net.n_e:]+rnn.ffwd[net.n_e:]
-    # bins = np.arange(i_total.min(),i_total.max(),0.1)
-    # vals, bins = np.histogram(i_total, bins=bins)
-    # vals = vals/(np.sum(vals)*0.1) #normalize by integral
-    # ax.plot(bins[:-1], vals, color='blue')
+    bins = np.arange(I_i.min(),I_i.max(),0.1)
+    vals, bins = np.histogram(I_i, bins=bins)
+    vals = vals/(np.sum(vals)*0.1) #normalize by integral
+    ax.plot(bins[:-1], vals, color='blue')
 
 
 def add_cc_hist(ax, x, dt, color='red', rand_select=300):

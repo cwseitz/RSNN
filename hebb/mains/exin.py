@@ -1,14 +1,12 @@
-import hebb_backend
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
-np.set_printoptions(threshold=sys.maxsize)
+from hebb.util import *
 
 q = 0.5
 dt = 0.1
 N = 20000
-Nrecord = 100
-T = 22000
+Nrecord = 1000
+T = 500
 Nt = int(round(T/dt))
 N_e = int(round(q*N))
 N_i = int(round((1-q)*N))
@@ -46,8 +44,8 @@ rxe = 0
 rxi = 0
 jeX = 0
 jiX = 0
-mxe0=mxe/np.sqrt(N)+rxe*jeX/N;
-mxi0=mxi/np.sqrt(N)+rxi*jiX/N;
+mxe0=(mxe/np.sqrt(N))+rxe*jeX/N;
+mxi0=(mxi/np.sqrt(N))+rxi*jiX/N;
 
 tausyne = 8.0
 tausyni = 4.0
@@ -64,36 +62,37 @@ gl = [1/15, 1/10]
 Cm = [1.0, 1.0]
 vlb = [-100.0, -100.0]
 vth = [-10.0, -10.0]
+vl = [-60.0, -60.0]
 DeltaT = [2.0, 0.5]
 vT = [-50.0, -50.0]
-vl = [-60.0, -60.0]
 vre = [-65.0, -65.0]
 tref = [1.5, 0.5]
 
-# V0min=vre[1]
-# V0max=vT[1]
-V0 = np.ones((N,))*5
-V0 = list(V0)
-V0 = [x.item() for x in V0]
+v0min=vre[1]
+v0max=vT[1]
+v0 = np.random.uniform(v0min, v0max, size=(N,))
+v0 = list(v0)
+v0 = [x.item() for x in v0]
 
-sig = np.random.normal(0,1,size=(Nt,))
-Ix1e = list(mxe+sig)
-Ix1i = list(mxi+sig)
-Ix2e = list(mxe+sig)
-Ix2i = list(mxi+sig)
+print(f'\nThis list should be decreasing for a balanced state to exist: {mxe0/mxi0},{wei0/wii0},{wee0/wie0}\n')
+print(f'Also, this number should be greater than 1: {wii0/wee0}\n')
+print(f'E Rate: {(mxe0*wii0-mxi0*wei0)/(wei0*wie0-wee0*wii0)} \n ')
+print(f'I Rate {(mxe0*wii0-mxi0*wei0)/(wei0*wie0-wee0*wii0)}')
 
-Irecord=list(np.sort(np.random.randint(0,N,Nrecord)))
-Irecord = [x.item() for x in Irecord] #convert to native python type
+trials = 1
+ffwd = FFWD_EIF(N, Nt, mxe, mxi, vxe, vxi, taux,rxe, rxi, jeX, jiX)
+rnn = ExInEIF(N,trials,Nrecord,T,Nt,N_e,N_i,q,dt,pee0,pei0,pie0,pii0,jee,jei,
+              jie,jii,wee0,wei0,wie0,wii0,Kee,Kei,Kie,Kii,taux,tausyne,tausyni,
+              tausynx,Jee,Jei,Jie,Jii,maxns,gl,Cm,vlb,vth,DeltaT,vT,vl,vre,tref,
+              N_e1,N_i1)
 
-c = [N,Nrecord,T,Nt,N_e,N_i,q,dt,pee0,pei0,pie0,pii0,jee,jei,jie,jii,
-wee0,wei0,wie0,wii0,Kee,Kei,Kie,Kii,taux,mxe0,mxi0,vxe,vxi,tausyne,tausyni,
-tausynx,Jee,Jei,Jie,Jii,maxns,gl,Cm,vlb,vth,DeltaT,vT,vl,vre,tref,Ix1e,
-Ix2e,Ix1i,Ix2i,Nrecord,Irecord,V0,rxe,rxi,jeX,jiX,N_e1,N_i1]
+rnn.call(ffwd, v0)
 
-vr, alphaer, alphair, alphaxr = hebb_backend.lif(c)
-plt.plot(np.mean(vr,axis=0))
-plt.show()
-plt.plot(np.mean(alphaer,axis=0))
-plt.plot(np.mean(alphair,axis=0))
-plt.plot(np.mean(alphaxr,axis=0))
+# rate = np.sum(rnn.spikes[:,0,:],axis=0)/(N*dt)
+# print(np.mean(rate))
+# plt.hlines(0.005,xmin=0,xmax=5000,color='red')
+# plt.plot(rate,color='blue',alpha=0.5)
+# plt.show()
+
+fig_7(ffwd, rnn)
 plt.show()
