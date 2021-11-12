@@ -34,7 +34,7 @@ class ExInEIF(RNN):
     def __init__(self,N,trials,Nrecord,T,Nt,N_e,N_i,q,dt,pee0,pei0,pie0,pii0,jee,jei,
                  jie,jii,wee0,wei0,wie0,wii0,Kee,Kei,Kie,Kii,taux,
                  tausyne,tausyni,tausynx,Jee,Jei,Jie,Jii,maxns,gl,Cm,vlb,vth,
-                 DeltaT,vT,vl,vre,tref,N_e1,N_i1):
+                 DeltaT,vT,vl,vre,tref, mxe, mxi, vxe, vxi):
 
         """
 
@@ -81,6 +81,7 @@ class ExInEIF(RNN):
         self.tausyne=tausyne #time constant for epsp
         self.tausyni=tausyni #time constant for ipsp
         self.tausynx=tausynx #time constant for external psp (if input is spikes)
+        self.taux=taux
 
         self.gl=gl #leak conductance
         self.Cm=Cm #membrane capacitance
@@ -92,22 +93,24 @@ class ExInEIF(RNN):
         self.vre=vre #resting potential
         self.tref=tref #duration of the refractory period
 
-        #Not sure how to summarize these
-        self.N_e1=N_e1 #Number of neurons in first fraction of E pop
-        self.N_i1=N_i1 #Number of neurons in first fraction of E pop
+        self.mxe = mxe
+        self.mxi = mxi
+        self.vxe = vxe
+        self.vxi = vxi
 
-    def call(self, ffwd, v0):
+
+    def call(self, v0):
 
         #Construct parameter list for call to C backend
 
         params = [self.N,self.Nrecord,self.T,self.Nt,self.N_e,self.N_i,self.q,
         self.dt,self.pee0,self.pei0,self.pie0,self.pii0,self.jee,self.jei,
         self.jie,self.jii,self.wee0,self.wei0,self.wie0,self.wii0,self.Kee,
-        self.Kei,self.Kie,self.Kii,ffwd.taux,ffwd.mxe0,ffwd.mxi0,ffwd.vxe,
-        ffwd.vxi,self.tausyne,self.tausyni,self.tausynx,self.Jee,self.Jei,
+        self.Kei,self.Kie,self.Kii,self.taux,self.mxe,self.mxi,self.vxe,
+        self.vxi,self.tausyne,self.tausyni,self.tausynx,self.Jee,self.Jei,
         self.Jie,self.Jii,self.maxns,self.gl,self.Cm,self.vlb,self.vth,self.DeltaT,
-        self.vT,self.vl,self.vre,self.tref,ffwd.Ix1e,ffwd.Ix2e,ffwd.Ix1i,ffwd.Ix2i,
-        self.Nrecord,self.Irecord,v0,ffwd.rxe,ffwd.rxi,ffwd.jeX,ffwd.jiX,self.N_e1,self.N_i1]
+        self.vT,self.vl,self.vre,self.tref,self.Nrecord,self.Irecord,v0]
+
 
         for i in range(self.trials):
             ctup = hebb_backend.EIF(params)
@@ -117,23 +120,23 @@ class ExInEIF(RNN):
         self.V = np.swapaxes(np.swapaxes(self.V,1,2),0,1)
         self.I_e = np.swapaxes(np.swapaxes(self.I_e,1,2),0,1)
         self.I_i = np.swapaxes(np.swapaxes(self.I_i,1,2),0,1)
-        self.spikes = np.swapaxes(self.spikes,0,1)
+        #self.spikes = np.swapaxes(self.spikes,0,1)
 
     def add_trial(self, tup):
 
         s, v, i_e, i_i, i_x = tup
 
-        trial_spikes = np.zeros((self.N, self.Nt))
-        for unit in range(self.N):
-            slice = s[s[:,1] == unit]
-            spike_times = slice[:,0]
-            for time in spike_times:
-                trial_spikes[unit,int(round(time/self.dt))] = 1
+        # trial_spikes = np.zeros((self.N, self.Nt), dtype=np.bool)
+        # for unit in range(self.N):
+        #     slice = s[s[:,1] == unit]
+        #     spike_times = slice[:,0]
+        #     for time in spike_times:
+        #         trial_spikes[unit,int(round(time/self.dt))] = 1
 
         self.V.append(v)
         self.I_e.append(i_e)
         self.I_i.append(i_i)
-        self.spikes.append(trial_spikes)
+        #self.spikes.append(trial_spikes)
 
 # class RNN:
 #

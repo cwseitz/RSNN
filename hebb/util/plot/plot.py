@@ -18,7 +18,7 @@ from ..math import *
 Neuron state variables in time
 """
 
-def add_avg_current(ax, rnn, ffwd, trial=0):
+def add_avg_current(ax, rnn, trial=0):
 
     ax.plot(np.mean(rnn.I_e[:,0,:],axis=0), color='red')
     ax.plot(np.mean(rnn.I_i[:,0,:],axis=0), color='blue')
@@ -159,7 +159,7 @@ def add_activity(ax, spikes, trial=0, color='red'):
 
     ax.plot(np.sum(spikes[:,trial,:], axis=0), color=color)
 
-def add_rate_hist(ax, rnn, nbins=10):
+def add_exin_rate_hist(ax, rnn, nbins=10):
 
     """
     Plot the histogram of firing rates for excitatory and inhibitory neurons
@@ -168,10 +168,15 @@ def add_rate_hist(ax, rnn, nbins=10):
     ----------
     """
 
-    rates = np.mean(rnn.spikes,axis=(1,2))/rnn.dt #average over trials and time
-    bins = np.linspace(rates.min(), rates.max(), nbins)
-    vals, bins = np.histogram(rates, bins=bins)
-    ax.plot(bins[:-1], vals, color='black', label=f'E ({np.round(np.mean(rates),2)})')
+    e_rates = np.mean(rnn.spikes[:rnn.N_e,:,:],axis=(1,2))/rnn.dt #average over trials and time
+    bins = np.linspace(e_rates.min(), e_rates.max(), nbins)
+    vals, bins = np.histogram(e_rates, bins=bins)
+    ax.plot(bins[:-1], vals, color='red', label=f'E ({np.round(np.mean(e_rates),3)})')
+
+    i_rates = np.mean(rnn.spikes[rnn.N_e:,:,:],axis=(1,2))/rnn.dt #average over trials and time
+    bins = np.linspace(i_rates.min(), i_rates.max(), nbins)
+    vals, bins = np.histogram(i_rates, bins=bins)
+    ax.plot(bins[:-1], vals, color='blue', label=f'I ({np.round(np.mean(i_rates),3)})')
 
 def add_ffwd_hist(ax, ffwd):
 
@@ -185,37 +190,36 @@ def add_ffwd_hist(ax, ffwd):
     bins = np.arange(np.array(ffwd.Ix1e).min(),np.array(ffwd.Ix1e).max(),0.025)
     vals, bins = np.histogram(ffwd.Ix1e, bins=bins)
     vals = vals/(np.sum(vals)*0.025) #normalize by integral
-    ax.plot(bins[:-1], vals, color='red', linestyle='--')
+    ax.plot(bins[:-1], vals, color='red', linestyle='--', label='E')
 
     bins = np.arange(np.array(ffwd.Ix1i).min(),np.array(ffwd.Ix1i).max(),0.025)
     vals, bins = np.histogram(ffwd.Ix1i, bins=bins)
     vals = vals/(np.sum(vals)*0.025) #normalize by integral
-    ax.plot(bins[:-1], vals, color='blue', linestyle='--')
+    ax.plot(bins[:-1], vals, color='blue', linestyle='--', label='I')
 
-def add_total_hist(ax, ffwd, I_e, I_i):
+def add_total_hist(ax, I_e, I_i, Tburn=1000, min=-5, max=3):
 
     """
-    Plot the histogram of recurrent inputs
+    Plot the histogram of total synaptic currents
 
     Parameters
     ----------
     """
 
-    bins = np.arange(I_e.min(),I_e.max(),0.1)
-    vals, bins = np.histogram(I_e, bins=bins)
+    bins = np.arange(min,max,0.1)
+    vals, bins = np.histogram(I_e[:,:,Tburn:], bins=bins)
     vals = vals/(np.sum(vals)*0.1) #normalize by integral
-    ax.plot(bins[:-1], vals, color='red')
+    ax.plot(bins[:-1], vals, alpha=0.5, color='red')
 
-    bins = np.arange(I_i.min(),I_i.max(),0.1)
-    vals, bins = np.histogram(I_i, bins=bins)
+    vals, bins = np.histogram(I_i[:,:,Tburn:], bins=bins)
     vals = vals/(np.sum(vals)*0.1) #normalize by integral
-    ax.plot(bins[:-1], vals, color='blue')
+    ax.plot(bins[:-1], vals, alpha=0.5, color='blue')
 
 
 def add_cc_hist(ax, x, dt, color='red', rand_select=300):
 
     """
-    Plot the average cross spectrum
+    Plot a histogram of cross correlations
 
     Parameters
     ----------
@@ -241,7 +245,7 @@ def add_cc_hist(ax, x, dt, color='red', rand_select=300):
 def add_mean_cc(ax, x, dt, color='red', rand_select=300):
 
     """
-    Plot the average cross spectrum
+    Plot the average cross-correlation
 
     Parameters
     ----------
@@ -264,7 +268,7 @@ def add_mean_cc(ax, x, dt, color='red', rand_select=300):
 def add_mean_ac(ax, x, dt, color='red', rand_select=300):
 
     """
-    Plot the average cross spectrum
+    Plot the average auto-correlation
 
     Parameters
     ----------
@@ -284,7 +288,7 @@ def add_mean_ac(ax, x, dt, color='red', rand_select=300):
     avg = np.mean(s, axis=(0,1))
     ax.plot(avg, color=color)
 
-def add_mean_cross_spectrum(ax, x, dt, color='red', rand_select=300):
+def add_mean_cs(ax, x, dt, color='red', rand_select=300):
 
     """
     Plot the average cross spectrum
@@ -309,7 +313,7 @@ def add_mean_cross_spectrum(ax, x, dt, color='red', rand_select=300):
     ax.plot(freq[1:T//2],avg[1:T//2], color=color)
     ax.set_ylim([0,avg[1:T//2].max()])
 
-def add_mean_auto_spectrum(ax, x, dt, color='red', rand_select=300):
+def add_mean_as(ax, x, dt, color='red', rand_select=300):
 
     """
     Plot the mean autospectrum
@@ -333,26 +337,6 @@ def add_mean_auto_spectrum(ax, x, dt, color='red', rand_select=300):
     avg = np.mean(s, axis=(0,1))
     ax.plot(freq[1:T//2],avg[1:T//2], color=color)
     ax.set_ylim([0,avg[1:T//2].max()])
-
-
-"""
-Distributions of state variables
-"""
-
-def add_input_hist(ax, rnn, unit=0, nbins=20, di=0.02):
-
-    """
-    Compute the histogram of current values for a single neuron over
-    trials, as a function of time i.e. P(I,t)
-    The vector over which P is calculated has shape (1, trials, 1)
-    """
-
-    bins = np.linspace(0,1,nbins)
-    colors = cm.coolwarm(np.linspace(0,1,rnn.nsteps))
-    for t in range(rnn.nsteps):
-        vals, bins = np.histogram(rnn.I[unit,:,t], bins=bins)
-        vals = vals/(np.sum(vals)*di)
-        ax.plot(bins[:-1], vals, color=colors[t])
 
 
 """

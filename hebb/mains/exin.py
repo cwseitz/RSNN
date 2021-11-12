@@ -6,7 +6,7 @@ q = 0.5
 dt = 0.1
 N = 20000
 Nrecord = 1000
-T = 500
+T = 5000
 Nt = int(round(T/dt))
 N_e = int(round(q*N))
 N_i = int(round((1-q)*N))
@@ -40,12 +40,8 @@ mxi = 0.01*np.sqrt(N)
 vxe = 0.05
 vxi = 0.05
 
-rxe = 0
-rxi = 0
-jeX = 0
-jiX = 0
-mxe0=(mxe/np.sqrt(N))+rxe*jeX/N;
-mxi0=(mxi/np.sqrt(N))+rxi*jiX/N;
+mxe0=(mxe/np.sqrt(N))
+mxi0=(mxi/np.sqrt(N))
 
 tausyne = 8.0
 tausyni = 4.0
@@ -79,20 +75,14 @@ print(f'Also, this number should be greater than 1: {wii0/wee0}\n')
 print(f'E Rate: {(mxe0*wii0-mxi0*wei0)/(wei0*wie0-wee0*wii0)} \n ')
 print(f'I Rate {(mxe0*wii0-mxi0*wei0)/(wei0*wie0-wee0*wii0)}')
 
+
 trials = 1
-ffwd = FFWD_EIF(N, Nt, mxe, mxi, vxe, vxi, taux,rxe, rxi, jeX, jiX)
+
 rnn = ExInEIF(N,trials,Nrecord,T,Nt,N_e,N_i,q,dt,pee0,pei0,pie0,pii0,jee,jei,
               jie,jii,wee0,wei0,wie0,wii0,Kee,Kei,Kie,Kii,taux,tausyne,tausyni,
               tausynx,Jee,Jei,Jie,Jii,maxns,gl,Cm,vlb,vth,DeltaT,vT,vl,vre,tref,
-              N_e1,N_i1)
+              mxe, mxi, vxe, vxi)
 
-rnn.call(ffwd, v0)
-
-# rate = np.sum(rnn.spikes[:,0,:],axis=0)/(N*dt)
-# print(np.mean(rate))
-# plt.hlines(0.005,xmin=0,xmax=5000,color='red')
-# plt.plot(rate,color='blue',alpha=0.5)
-# plt.show()
-
-fig_7(ffwd, rnn)
+rnn.call(v0)
+fig_7(rnn)
 plt.show()
