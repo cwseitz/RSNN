@@ -5,8 +5,8 @@ from hebb.util import *
 q = 0.5
 dt = 0.1
 N = 20000
-Nrecord = 1000
-T = 5000
+Nrecord = 300
+T = 10000
 Nt = int(round(T/dt))
 N_e = int(round(q*N))
 N_i = int(round((1-q)*N))
@@ -77,12 +77,11 @@ print(f'I Rate {(mxe0*wii0-mxi0*wei0)/(wei0*wie0-wee0*wii0)}')
 
 
 trials = 1
-
+save_dir = '/home/cwseitz/Desktop/data/'
 rnn = ExInEIF(N,trials,Nrecord,T,Nt,N_e,N_i,q,dt,pee0,pei0,pie0,pii0,jee,jei,
               jie,jii,wee0,wei0,wie0,wii0,Kee,Kei,Kie,Kii,taux,tausyne,tausyni,
               tausynx,Jee,Jei,Jie,Jii,maxns,gl,Cm,vlb,vth,DeltaT,vT,vl,vre,tref,
               mxe, mxi, vxe, vxi)
 
 rnn.call(v0)
-fig_7(rnn)
-plt.show()
+np.savez_compressed(save_dir + 'data0', rnn.V, rnn.I_e, rnn.I_i, rnn.ffwd, rnn.spikes)

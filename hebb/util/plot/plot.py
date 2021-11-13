@@ -18,10 +18,9 @@ from ..math import *
 Neuron state variables in time
 """
 
-def add_avg_current(ax, rnn, trial=0):
+def add_avg_current(ax, curr, color='red'):
 
-    ax.plot(np.mean(rnn.I_e[:,0,:],axis=0), color='red')
-    ax.plot(np.mean(rnn.I_i[:,0,:],axis=0), color='blue')
+    ax.plot(np.mean(curr,axis=0), color=color)
 
 def add_unit_voltage(ax, rnn, unit=0, trial=0, color='black'):
 
@@ -109,7 +108,7 @@ def add_exin_rates(ax, rnn, n_e, n_i):
     ax.plot(r_e, color='red', alpha=0.5)
     ax.plot(r_i, color='blue', alpha=0.5)
 
-def add_raster(ax, spikes, trial=0, color='black'):
+def add_raster(ax, spikes, color='black'):
 
     """
     Generate a raster plot by randomly selecting 'n_units'
@@ -135,7 +134,7 @@ def add_raster(ax, spikes, trial=0, color='black'):
     units = spikes.shape[0]
     arr = []
     for unit in range(units):
-        spike_times = np.argwhere(spikes[unit,trial,:] > 0)
+        spike_times = np.argwhere(spikes[unit,:] > 0)
         spike_times = spike_times.reshape((spike_times.shape[0],))
         arr.append(spike_times)
         ax.eventplot(arr, colors=color, orientation='horizontal', lineoffsets=1, linelengths=1)
@@ -159,7 +158,7 @@ def add_activity(ax, spikes, trial=0, color='red'):
 
     ax.plot(np.sum(spikes[:,trial,:], axis=0), color=color)
 
-def add_exin_rate_hist(ax, rnn, nbins=10):
+def add_rate_hist(ax, spikes, dt, nbins=7):
 
     """
     Plot the histogram of firing rates for excitatory and inhibitory neurons
@@ -168,15 +167,12 @@ def add_exin_rate_hist(ax, rnn, nbins=10):
     ----------
     """
 
-    e_rates = np.mean(rnn.spikes[:rnn.N_e,:,:],axis=(1,2))/rnn.dt #average over trials and time
-    bins = np.linspace(e_rates.min(), e_rates.max(), nbins)
-    vals, bins = np.histogram(e_rates, bins=bins)
-    ax.plot(bins[:-1], vals, color='red', label=f'E ({np.round(np.mean(e_rates),3)})')
-
-    i_rates = np.mean(rnn.spikes[rnn.N_e:,:,:],axis=(1,2))/rnn.dt #average over trials and time
-    bins = np.linspace(i_rates.min(), i_rates.max(), nbins)
-    vals, bins = np.histogram(i_rates, bins=bins)
-    ax.plot(bins[:-1], vals, color='blue', label=f'I ({np.round(np.mean(i_rates),3)})')
+    N = spikes.shape[0]
+    rates = np.sum(spikes,axis=-1)/N*dt
+    bins = np.linspace(rates.min(), rates.max(), nbins)
+    vals, bins = np.histogram(rates, bins=nbins)
+    ax.plot(bins[:-1], vals, color='black',alpha=0.5)
+    return np.mean(rates)
 
 def add_ffwd_hist(ax, ffwd):
 
@@ -197,23 +193,23 @@ def add_ffwd_hist(ax, ffwd):
     vals = vals/(np.sum(vals)*0.025) #normalize by integral
     ax.plot(bins[:-1], vals, color='blue', linestyle='--', label='I')
 
-def add_total_hist(ax, I_e, I_i, Tburn=1000, min=-5, max=3):
+def add_curr_hist(ax, curr, min=-5, max=3, color='red'):
 
     """
-    Plot the histogram of total synaptic currents
+    Add a histogram of synaptic currents to the axis
 
     Parameters
     ----------
     """
 
     bins = np.arange(min,max,0.1)
-    vals, bins = np.histogram(I_e[:,:,Tburn:], bins=bins)
+    vals, bins = np.histogram(curr, bins=bins)
     vals = vals/(np.sum(vals)*0.1) #normalize by integral
-    ax.plot(bins[:-1], vals, alpha=0.5, color='red')
+    ax.plot(bins[:-1], vals, alpha=0.5, color=color)
 
-    vals, bins = np.histogram(I_i[:,:,Tburn:], bins=bins)
-    vals = vals/(np.sum(vals)*0.1) #normalize by integral
-    ax.plot(bins[:-1], vals, alpha=0.5, color='blue')
+    # vals, bins = np.histogram(i_i, bins=bins)
+    # vals = vals/(np.sum(vals)*0.1) #normalize by integral
+    # ax.plot(bins[:-1], vals, alpha=0.5, color='blue')
 
 
 def add_cc_hist(ax, x, dt, color='red', rand_select=300):
@@ -242,7 +238,33 @@ def add_cc_hist(ax, x, dt, color='red', rand_select=300):
     vals = vals/(np.sum(vals)*0.02) #normalize by integral
     ax.plot(bins[:-1], vals, color=color)
 
-def add_mean_cc(ax, x, dt, color='red', rand_select=300):
+# def add_mean_cc_brute(ax, z, color='red'):
+#
+#     """
+#     Plot the average cross-correlation using the brute force method
+#
+#     Parameters
+#     ----------
+#     """
+#
+#     N = z.shape[0]
+#     xv,yv = np.meshgrid(np.arange(0,N,1),np.arange(0,N,1))
+#     X,Y = xv.ravel(), yv.ravel()
+#     arr = []
+#     for i in range(X.shape[0]):
+#         x = X[i]; y = Y[i]
+#         if x != y:
+#             z_x = (z[x] - np.mean(z[x]))/np.sqrt(0.05)
+#             z_y = (z[y] - np.mean(z[y]))/np.sqrt(0.05)
+#             # xt = np.fft.fft(z_x); yt = np.fft.fft(z_y)
+#             # cc = np.abs(np.fft.ifft(xt*yt.conj()))
+#             cc = np.correlate(z_x,z_y,mode='same')
+#             arr.append(cc)
+#     arr = np.array(arr)
+#     ax.plot(np.mean(arr,axis=0)/1000,color=color)
+
+
+def add_mean_cc(ax, x, color='red'):
 
     """
     Plot the average cross-correlation
@@ -251,21 +273,15 @@ def add_mean_cc(ax, x, dt, color='red', rand_select=300):
     ----------
     """
 
-    n = x.shape[0]
-    T = x.shape[-1]
-    if rand_select != None:
-        g = np.arange(0,n,1)
-        v = np.random.choice(g,size=(int(rand_select),),replace=False)
-        x = x[v,:,:]
-
     #indices of off-diagonal elements
     s = block_cc(x)
     idx_x, idx_y = np.where(~np.eye(s.shape[0],dtype=bool))
     s = s[idx_x,idx_y,:,:]
     avg = np.mean(s, axis=(0,1))
-    ax.plot(avg, color=color)
+    avg = np.roll(avg, avg.shape[0]//2)
+    ax.plot(avg, color=color,alpha=0.5)
 
-def add_mean_ac(ax, x, dt, color='red', rand_select=300):
+def add_mean_ac(ax, x, color='red'):
 
     """
     Plot the average auto-correlation
@@ -274,19 +290,14 @@ def add_mean_ac(ax, x, dt, color='red', rand_select=300):
     ----------
     """
 
-    n = x.shape[0]
-    T = x.shape[-1]
-    if rand_select != None:
-        g = np.arange(0,n,1)
-        v = np.random.choice(g,size=(int(rand_select),),replace=False)
-        x = x[v,:,:]
-
-    #indices of off-diagonal elements
+    #indices of on-diagonal elements
     s = block_cc(x)
     idx_x, idx_y = np.where(np.eye(s.shape[0],dtype=bool))
+    # print(idx_x,idx_y)
     s = s[idx_x,idx_y,:,:]
     avg = np.mean(s, axis=(0,1))
-    ax.plot(avg, color=color)
+    avg = np.roll(avg, avg.shape[0]//2)
+    ax.plot(avg, color=color,alpha=0.5)
 
 def add_mean_cs(ax, x, dt, color='red', rand_select=300):
 
@@ -316,7 +327,7 @@ def add_mean_cs(ax, x, dt, color='red', rand_select=300):
 def add_mean_as(ax, x, dt, color='red', rand_select=300):
 
     """
-    Plot the mean autospectrum
+    Plot the mean autospectrum (standard power spectrum of one signal)
 
     Parameters
     ----------

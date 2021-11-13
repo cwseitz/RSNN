@@ -48,6 +48,7 @@ class ExInEIF(RNN):
 
         super(ExInEIF, self).__init__(N, T, dt, trials, Nrecord)
         self.V = []; self.I_e = []; self.I_i = []; self.spikes = []
+        self.ffwd = []
 
         #Excitatory-inhibitory params
         self.N_e = N_e #number of excitatory neurons
@@ -120,23 +121,26 @@ class ExInEIF(RNN):
         self.V = np.swapaxes(np.swapaxes(self.V,1,2),0,1)
         self.I_e = np.swapaxes(np.swapaxes(self.I_e,1,2),0,1)
         self.I_i = np.swapaxes(np.swapaxes(self.I_i,1,2),0,1)
-        #self.spikes = np.swapaxes(self.spikes,0,1)
+        self.ffwd = np.swapaxes(np.swapaxes(self.ffwd,1,2),0,1)
+        self.spikes = np.swapaxes(self.spikes,0,1)
 
     def add_trial(self, tup):
 
-        s, v, i_e, i_i, i_x = tup
+        s, v, i_e, i_i, i_x, ffwd = tup
 
-        # trial_spikes = np.zeros((self.N, self.Nt), dtype=np.bool)
-        # for unit in range(self.N):
-        #     slice = s[s[:,1] == unit]
-        #     spike_times = slice[:,0]
-        #     for time in spike_times:
-        #         trial_spikes[unit,int(round(time/self.dt))] = 1
+        nspikes_record = 1000 #not recording spikes from same neurons as currents
+        trial_spikes = np.zeros((nspikes_record, self.Nt), dtype=np.bool)
+        for unit in range(nspikes_record):
+            slice = s[s[:,1] == unit]
+            spike_times = slice[:,0]
+            for time in spike_times:
+                trial_spikes[unit,int(round(time/self.dt))] = 1
 
         self.V.append(v)
         self.I_e.append(i_e)
         self.I_i.append(i_i)
-        #self.spikes.append(trial_spikes)
+        self.ffwd.append(ffwd)
+        self.spikes.append(trial_spikes)
 
 # class RNN:
 #

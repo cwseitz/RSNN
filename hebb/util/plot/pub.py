@@ -696,7 +696,7 @@ def fig_6(rnn, net, focal=0):
 
     plt.tight_layout()
 
-def fig_7(rnn):
+def fig_7(v, i_e, i_i, ffwd, spikes):
 
     """
     Summarize the random excitatory-inhibitory network
@@ -715,64 +715,96 @@ def fig_7(rnn):
     ax3 = fig.add_subplot(gs[5:7, :2])
     ax4 = fig.add_subplot(gs[5:7, 2:4])
 
-    ax6 = fig.add_subplot(gs[3:5, 4:6])
-    ax7 = fig.add_subplot(gs[3:5, 6:8])
-    ax8 = fig.add_subplot(gs[5:7, 4:6])
-    ax9 = fig.add_subplot(gs[5:7, 6:8])
+    ax5 = fig.add_subplot(gs[3:5, 4:6])
+    ax6 = fig.add_subplot(gs[3:5, 6:8])
+    ax7 = fig.add_subplot(gs[5:7, 4:6])
+    ax8 = fig.add_subplot(gs[5:7, 6:8])
 
-    #add_raster(ax0, rnn.spikes[:250,0,-5000:], color='black')
-    #add_avg_current(ax1,rnn)
-    #add_exin_rate_hist(ax3,rnn)
-    #add_total_hist(ax2, rnn.I_e, rnn.I_i)
+    x = 40; y = 100
+    add_raster(ax0, spikes[:100,0,-2000:], color='black')
+    ax1.plot(v[x,0,-2000:],color='red')
+    ax1.plot(v[y,0,-2000:],color='purple')
+    avg_rate = add_rate_hist(ax2,spikes[:,0,:],0.1)
 
-    ax6.plot(rnn.I_e[100,0,-2000:],color='red')
-    ax6.plot(rnn.I_e[200,0,-2000:],color='purple')
+    #slice the data to consider only the steady state
+    t_ss = 2000
+    i_e = i_e[:,:,-t_ss:]
+    i_i = i_i[:,:,-t_ss:]
+    ffwd = ffwd[:,:,-t_ss:]
+    rec = i_e + i_i
+    total = i_e + i_i + ffwd
 
-    ax7.plot(rnn.V[100,0,-2000:],color='red')
-    ax7.plot(rnn.V[200,0,-2000:],color='purple')
 
-    add_mean_ac(ax4, rnn.V[:,:,-1000:], rnn.dt, rand_select=500, color='black')
-    add_mean_cc(ax8, rnn.V[:,:,-1000:], rnn.dt, rand_select=500, color='black')
+    add_avg_current(ax3,rec[:,0,:],color='purple')
+    add_avg_current(ax3,total[:,0,:],color='cyan')
+    add_avg_current(ax3,ffwd[:,0,:],color='black')
 
-    # add_mean_ac(ax9, rnn.I_e[:,:,-1000:], rnn.dt, color='red')
-    # add_mean_ac(ax9, rnn.I_i[:,:,-1000:], rnn.dt, color='blue')
+    add_curr_hist(ax4, rec, color='purple') #recurrent inputs
+    add_curr_hist(ax4, total, color='cyan') #total inputs
+    add_curr_hist(ax4, ffwd, color='black') #ffwd inputs
 
-    # add_mean_cs(ax8, rnn.I_e[:,:,-1000:], rnn.dt, color='red')
-    # add_mean_cs(ax8, rnn.I_i[:,:,-1000:], rnn.dt, color='blue')
-    # add_mean_as(ax9, rnn.I_e[:,:,-1000:], rnn.dt, color='red')
-    # add_mean_as(ax9, rnn.I_i[:,:,-1000:], rnn.dt, color='blue')
+    total = total - total.mean(axis=-1, keepdims=True)
+    total/total.std(axis=1)[:,None]
+    #total = total/total.std(axis=-1, keepdims=True)
+    add_mean_ac(ax5,total,color='blue')
+    add_mean_cc(ax6,total,color='black')
+
+    # ffwd = ffwd - ffwd.mean(axis=-1, keepdims=True)
+    # ffwd /= np.sqrt(0.05)
+    # add_mean_ac(ax7,ffwd[:,:,-1000:],color='blue')
+    # add_mean_cc(ax8,ffwd[:,:,-1000:],color='black')
+
+    rec = rec - rec.mean(axis=-1, keepdims=True)
+    rec/rec.std(axis=1)[:,None]
+    add_mean_ac(ax7,rec[:,:,-1000:],color='blue')
+    add_mean_cc(ax8,rec[:,:,-1000:],color='black')
+
+
+    format_ax(ax0,
+              xlabel=r'$\mathrm{Time} \;(\mathrm{ms})$',
+              ylabel=r'$\mathrm{Neuron}$',
+              ax_is_box=True)
 
     format_ax(ax1,
               xlabel=r'$\mathrm{Time} \;(\mathrm{ms})$',
-              ylabel=r'$\langle R(t) \rangle \; [\mathrm{mV}]$',
+              ylabel=r'$\mathbf{V} [\mathrm{mV}]$',
               ax_is_box=False)
-    format_ax(ax2,
-              xlabel='$\mathbf{PSP} \; [\mathrm{mV}]$',
-              ylabel=r'$\mathrm{Counts}$',
-              ax_is_box=False)
-    ax2.legend(loc='upper right')
 
-    format_ax(ax3,
+    format_ax(ax2,
               xlabel=r'$\mathrm{Firing\; Rate} \; [\mathrm{Hz}]$',
               ylabel=r'$\mathrm{Counts}$',
               ax_is_box=False)
+    ax2.set_title(f'$\mu$={np.round(avg_rate,3)}',fontsize=10)
     ax3.legend(loc='upper right', fontsize=8)
 
+    format_ax(ax3,
+              xlabel=r'$\mathrm{Time} \;(\mathrm{ms})$',
+              ylabel='$\mathrm{PSP} \; [\mathrm{mV}]$',
+              ax_is_box=False)
+
     format_ax(ax4,
-              xlabel=r'$\mathrm{Time}\; (\mathrm{ms})$',
-              ylabel=r'$\langle G_{xx}(\tau)\rangle$',
+              xlabel='$\mathrm{PSP} \; [\mathrm{mV}]$',
+              ylabel=r'$\mathrm{Counts}$',
               ax_is_box=False)
+
+    format_ax(ax5,
+              xlabel=r'$\mathrm{Lag} \;\tau \;(\mathrm{ms})$',
+              ylabel=r'$\langle I_{xx}(\tau)\rangle$',
+              ax_is_box=False)
+
     format_ax(ax6,
-              xlabel=r'$\mathrm{Time}\; (\mathrm{ms})$',
-              ylabel=r'$\xi(t)$',
+              xlabel=r'$\mathrm{Lag} \;\tau \;(\mathrm{ms})$',
+              ylabel=r'$\langle I_{xy}(\tau)\rangle$',
               ax_is_box=False)
+
     format_ax(ax7,
-              xlabel=r'$\mathrm{Time}\; (\mathrm{ms})$',
-              ylabel=r'$\mathbf{V} [\mathrm{mV}]$',
+              xlabel=r'$\mathrm{Lag} \;\tau \;(\mathrm{ms})$',
+              ylabel=r'$\langle R_{xx}(\tau)\rangle$',
               ax_is_box=False)
+
     format_ax(ax8,
-              xlabel=r'$\mathrm{Time}\; (\mathrm{ms})$',
-              ylabel=r'$\langle G_{xy}(\tau)\rangle$',
+              xlabel=r'$\mathrm{Lag} \;\tau \;(\mathrm{ms})$',
+              ylabel=r'$\langle R_{xy}(\tau)\rangle$',
               ax_is_box=False)
 
 def fig_8(ffwd,net,rnn):
