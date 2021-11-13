@@ -18,11 +18,13 @@ from ..math import *
 Neuron state variables in time
 """
 
-def add_avg_current(ax, curr, color='red'):
+def add_avg_current(ax, curr, dt, color='red'):
 
-    ax.plot(np.mean(curr,axis=0), color=color)
+    Nt = curr.shape[-1]
+    t = np.arange(0,Nt,1)*dt
+    ax.plot(t, np.mean(curr,axis=0), color=color)
 
-def add_unit_voltage(ax, rnn, unit=0, trial=0, color='black'):
+def add_unit_voltage(ax, v, dt, unit=0, trial=0, color='black'):
 
     """
     Add the voltage trace for a single neuron
@@ -39,76 +41,12 @@ def add_unit_voltage(ax, rnn, unit=0, trial=0, color='black'):
         index of trial to plot
     """
 
-    ax.plot(rnn.V[unit,trial,:], color=color)
+    Nt = v.shape[-1]
+    t = np.arange(0,Nt,1)*dt
+    ax.plot(t, v[unit,trial,:], color=color)
     ax.grid(which='both')
 
-
-def add_unit_current(ax, ffwd, rnn, unit=0, trial=0):
-
-    """
-    Add the current trace for a single neuron
-
-    Parameters
-    ----------
-    ax : object,
-        matplotlib axis object
-    rnn : object,
-        RNN object
-    unit : int, optional
-        index of unit to plot
-    trial : int, optional
-        index of trial to plot
-    """
-
-    ax.plot(rnn.I_r[unit,trial,:], label=r'$R(t)$', color='blue')
-    ax.plot(ffwd[unit,trial,:], label=r'$F(t)$', color='red')
-    ax.grid(which='both')
-
-def add_unit_spikes(ax, rnn, unit=0, trial=0):
-
-    """
-    Add the spikes of a single neuron
-
-    Parameters
-    ----------
-    ax : object,
-        matplotlib axis object
-    rnn : object,
-        RNN object
-    unit : int, optional
-        index of unit to plot
-    trial : int, optional
-        index of trial to plot
-    """
-
-    ax.plot(rnn.Z[unit,trial,:], 'k')
-    ax.grid(which='both')
-    ax.set_ylabel('$\mathbf{Z}(t)$')
-
-def add_exin_rates(ax, rnn, n_e, n_i):
-
-    """
-    Add the spikes of a single neuron
-
-    Parameters
-    ----------
-    ax : object,
-        matplotlib axis object
-    rnn : object,
-        RNN object
-    unit : int, optional
-        index of unit to plot
-    trial : int, optional
-        index of trial to plot
-    """
-
-    r_e = np.sum(rnn.Z[:n_e,0,:], axis=0)
-    r_i = np.sum(rnn.Z[n_e:,0,:], axis=0)
-    ax.grid(which='both')
-    ax.plot(r_e, color='red', alpha=0.5)
-    ax.plot(r_i, color='blue', alpha=0.5)
-
-def add_raster(ax, spikes, color='black'):
+def add_raster(ax, spikes, dt, color='black'):
 
     """
     Generate a raster plot by randomly selecting 'n_units'
@@ -136,7 +74,7 @@ def add_raster(ax, spikes, color='black'):
     for unit in range(units):
         spike_times = np.argwhere(spikes[unit,:] > 0)
         spike_times = spike_times.reshape((spike_times.shape[0],))
-        arr.append(spike_times)
+        arr.append(spike_times*dt)
         ax.eventplot(arr, colors=color, orientation='horizontal', lineoffsets=1, linelengths=1)
 
 def add_activity(ax, spikes, trial=0, color='red'):
@@ -158,7 +96,7 @@ def add_activity(ax, spikes, trial=0, color='red'):
 
     ax.plot(np.sum(spikes[:,trial,:], axis=0), color=color)
 
-def add_rate_hist(ax, spikes, dt, nbins=7):
+def add_rate_hist(ax, spikes, dt, dr=10):
 
     """
     Plot the histogram of firing rates for excitatory and inhibitory neurons
@@ -168,9 +106,10 @@ def add_rate_hist(ax, spikes, dt, nbins=7):
     """
 
     N = spikes.shape[0]
-    rates = np.sum(spikes,axis=-1)/N*dt
-    bins = np.linspace(rates.min(), rates.max(), nbins)
-    vals, bins = np.histogram(rates, bins=nbins)
+    rates = 1000*np.sum(spikes,axis=0)/(N*dt)
+    bins = np.arange(rates.min(), rates.max(), dr)
+    vals, bins = np.histogram(rates, bins=bins)
+    vals = vals/(np.sum(vals)*dr) #normalize by integral
     ax.plot(bins[:-1], vals, color='black',alpha=0.5)
     return np.mean(rates)
 
@@ -193,7 +132,7 @@ def add_ffwd_hist(ax, ffwd):
     vals = vals/(np.sum(vals)*0.025) #normalize by integral
     ax.plot(bins[:-1], vals, color='blue', linestyle='--', label='I')
 
-def add_curr_hist(ax, curr, min=-5, max=3, color='red'):
+def add_curr_hist(ax, curr, min=-5, max=3, label=None, color='red'):
 
     """
     Add a histogram of synaptic currents to the axis
@@ -205,7 +144,7 @@ def add_curr_hist(ax, curr, min=-5, max=3, color='red'):
     bins = np.arange(min,max,0.1)
     vals, bins = np.histogram(curr, bins=bins)
     vals = vals/(np.sum(vals)*0.1) #normalize by integral
-    ax.plot(bins[:-1], vals, alpha=0.5, color=color)
+    ax.plot(bins[:-1], vals, alpha=0.5, label=label, color=color)
 
     # vals, bins = np.histogram(i_i, bins=bins)
     # vals = vals/(np.sum(vals)*0.1) #normalize by integral
@@ -264,7 +203,7 @@ def add_cc_hist(ax, x, dt, color='red', rand_select=300):
 #     ax.plot(np.mean(arr,axis=0)/1000,color=color)
 
 
-def add_mean_cc(ax, x, color='red'):
+def add_mean_cc(ax, x, dt, color='red'):
 
     """
     Plot the average cross-correlation
@@ -273,15 +212,22 @@ def add_mean_cc(ax, x, color='red'):
     ----------
     """
 
+    Nt = x.shape[-1]
+    t = np.arange(-Nt//2,Nt//2,1)*dt
+
+    std = x.std(axis=-1, keepdims=True)
+    mu = x.mean(axis=-1, keepdims=True)
+    x = (x - mu)/std
+
     #indices of off-diagonal elements
     s = block_cc(x)
     idx_x, idx_y = np.where(~np.eye(s.shape[0],dtype=bool))
     s = s[idx_x,idx_y,:,:]
     avg = np.mean(s, axis=(0,1))
     avg = np.roll(avg, avg.shape[0]//2)
-    ax.plot(avg, color=color,alpha=0.5)
+    ax.plot(t, avg, color=color,alpha=0.5)
 
-def add_mean_ac(ax, x, color='red'):
+def add_mean_ac(ax, x, dt, color='red'):
 
     """
     Plot the average auto-correlation
@@ -290,14 +236,21 @@ def add_mean_ac(ax, x, color='red'):
     ----------
     """
 
-    #indices of on-diagonal elements
+    Nt = x.shape[-1]
+    t = np.arange(-Nt//2,Nt//2,1)*dt
+
+    std = x.std(axis=-1, keepdims=True)
+    mu = x.mean(axis=-1, keepdims=True)
+    x = (x - mu)/std
+
+    #indices of off-diagonal elements
     s = block_cc(x)
     idx_x, idx_y = np.where(np.eye(s.shape[0],dtype=bool))
-    # print(idx_x,idx_y)
     s = s[idx_x,idx_y,:,:]
     avg = np.mean(s, axis=(0,1))
     avg = np.roll(avg, avg.shape[0]//2)
-    ax.plot(avg, color=color,alpha=0.5)
+    ax.plot(t, avg, color=color,alpha=0.5)
+
 
 def add_mean_cs(ax, x, dt, color='red', rand_select=300):
 

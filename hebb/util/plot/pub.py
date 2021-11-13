@@ -696,7 +696,7 @@ def fig_6(rnn, net, focal=0):
 
     plt.tight_layout()
 
-def fig_7(v, i_e, i_i, ffwd, spikes):
+def fig_7(v, i_e, i_i, ffwd, spikes, dt):
 
     """
     Summarize the random excitatory-inhibitory network
@@ -707,8 +707,8 @@ def fig_7(v, i_e, i_i, ffwd, spikes):
         Number of neurons in the network
     """
 
-    fig = plt.figure(figsize=(8,6))
-    gs = fig.add_gridspec(7,8, wspace=3, hspace=3)
+    fig = plt.figure(figsize=(8,5))
+    gs = fig.add_gridspec(7,8, wspace=10, hspace=10)
     ax0 = fig.add_subplot(gs[:3, :])
     ax1 = fig.add_subplot(gs[3:5, :2])
     ax2 = fig.add_subplot(gs[3:5, 2:4])
@@ -720,92 +720,98 @@ def fig_7(v, i_e, i_i, ffwd, spikes):
     ax7 = fig.add_subplot(gs[5:7, 4:6])
     ax8 = fig.add_subplot(gs[5:7, 6:8])
 
-    x = 40; y = 100
-    add_raster(ax0, spikes[:100,0,-2000:], color='black')
-    ax1.plot(v[x,0,-2000:],color='red')
-    ax1.plot(v[y,0,-2000:],color='purple')
-    avg_rate = add_rate_hist(ax2,spikes[:,0,:],0.1)
-
-    #slice the data to consider only the steady state
-    t_ss = 2000
-    i_e = i_e[:,:,-t_ss:]
-    i_i = i_i[:,:,-t_ss:]
-    ffwd = ffwd[:,:,-t_ss:]
     rec = i_e + i_i
-    total = i_e + i_i + ffwd
+    total = rec + ffwd
+    t_ss = rec.shape[-1]
 
+    x = 40; y = 100
+    add_raster(ax0, spikes[:200,0,-2000:], dt, color='black')
+    add_unit_voltage(ax1, v, dt, unit=x, trial=0, color='red')
+    add_unit_voltage(ax1, v, dt, unit=y, trial=0, color='purple')
+    avg_rate = add_rate_hist(ax2,spikes[:,0,:],dt)
 
-    add_avg_current(ax3,rec[:,0,:],color='purple')
-    add_avg_current(ax3,total[:,0,:],color='cyan')
-    add_avg_current(ax3,ffwd[:,0,:],color='black')
+    add_avg_current(ax3,rec[:,0,:], dt, color='purple')
+    add_avg_current(ax3,total[:,0,:], dt, color='cyan')
+    add_avg_current(ax3,ffwd[:,0,:], dt, color='black')
 
-    add_curr_hist(ax4, rec, color='purple') #recurrent inputs
-    add_curr_hist(ax4, total, color='cyan') #total inputs
-    add_curr_hist(ax4, ffwd, color='black') #ffwd inputs
+    add_curr_hist(ax4, rec, color='purple', label='R(t)') #recurrent inputs
+    add_curr_hist(ax4, total, color='cyan', label='I(t)') #total inputs
+    add_curr_hist(ax4, ffwd, color='black', label='F(t)') #ffwd inputs
 
-    total = total - total.mean(axis=-1, keepdims=True)
-    total/total.std(axis=1)[:,None]
-    #total = total/total.std(axis=-1, keepdims=True)
-    add_mean_ac(ax5,total,color='blue')
-    add_mean_cc(ax6,total,color='black')
-
-    # ffwd = ffwd - ffwd.mean(axis=-1, keepdims=True)
-    # ffwd /= np.sqrt(0.05)
-    # add_mean_ac(ax7,ffwd[:,:,-1000:],color='blue')
-    # add_mean_cc(ax8,ffwd[:,:,-1000:],color='black')
-
-    rec = rec - rec.mean(axis=-1, keepdims=True)
-    rec/rec.std(axis=1)[:,None]
-    add_mean_ac(ax7,rec[:,:,-1000:],color='blue')
-    add_mean_cc(ax8,rec[:,:,-1000:],color='black')
-
+    add_mean_ac(ax5,total,dt,color='blue')
+    add_mean_cc(ax6,total,dt,color='black')
+    add_mean_ac(ax7,rec,dt,color='blue')
+    add_mean_cc(ax8,rec,dt,color='black')
 
     format_ax(ax0,
               xlabel=r'$\mathrm{Time} \;(\mathrm{ms})$',
               ylabel=r'$\mathrm{Neuron}$',
-              ax_is_box=True)
+              ax_is_box=True,
+              label_fontsize='small')
 
     format_ax(ax1,
               xlabel=r'$\mathrm{Time} \;(\mathrm{ms})$',
               ylabel=r'$\mathbf{V} [\mathrm{mV}]$',
-              ax_is_box=False)
+              ax_is_box=False,
+              label_fontsize='small')
 
     format_ax(ax2,
               xlabel=r'$\mathrm{Firing\; Rate} \; [\mathrm{Hz}]$',
-              ylabel=r'$\mathrm{Counts}$',
-              ax_is_box=False)
-    ax2.set_title(f'$\mu$={np.round(avg_rate,3)}',fontsize=10)
+              ylabel=r'$\mathrm{Normalized\; Counts}$',
+              ax_is_box=False,
+              label_fontsize='small')
+    ax2.set_title(f'$\mu_r$={np.round(avg_rate,3)} Hz',fontsize=10)
     ax3.legend(loc='upper right', fontsize=8)
 
     format_ax(ax3,
               xlabel=r'$\mathrm{Time} \;(\mathrm{ms})$',
               ylabel='$\mathrm{PSP} \; [\mathrm{mV}]$',
-              ax_is_box=False)
+              ax_is_box=False,
+              label_fontsize='small')
 
     format_ax(ax4,
               xlabel='$\mathrm{PSP} \; [\mathrm{mV}]$',
-              ylabel=r'$\mathrm{Counts}$',
-              ax_is_box=False)
+              ylabel=r'$\mathrm{Normalized\; Counts}$',
+              ax_is_box=False,
+              label_fontsize='small')
+    ax4.legend(loc='upper left', fontsize=6)
 
     format_ax(ax5,
               xlabel=r'$\mathrm{Lag} \;\tau \;(\mathrm{ms})$',
               ylabel=r'$\langle I_{xx}(\tau)\rangle$',
-              ax_is_box=False)
+              ax_is_box=False,
+              label_fontsize='small')
 
     format_ax(ax6,
               xlabel=r'$\mathrm{Lag} \;\tau \;(\mathrm{ms})$',
               ylabel=r'$\langle I_{xy}(\tau)\rangle$',
-              ax_is_box=False)
+              ax_is_box=False,
+              label_fontsize='small')
 
     format_ax(ax7,
               xlabel=r'$\mathrm{Lag} \;\tau \;(\mathrm{ms})$',
               ylabel=r'$\langle R_{xx}(\tau)\rangle$',
-              ax_is_box=False)
+              ax_is_box=False,
+              label_fontsize='small')
 
     format_ax(ax8,
               xlabel=r'$\mathrm{Lag} \;\tau \;(\mathrm{ms})$',
               ylabel=r'$\langle R_{xy}(\tau)\rangle$',
-              ax_is_box=False)
+              ax_is_box=False,
+              label_fontsize='small')
+
+    ax0.text(-0.1, 1.0, 'A', transform=ax0.transAxes, size=12, weight='bold')
+    ax1.text(-0.1, 1.1, 'B', transform=ax1.transAxes, size=12, weight='bold')
+    ax2.text(-0.1, 1.1, 'C', transform=ax2.transAxes, size=12, weight='bold')
+    ax3.text(-0.1, 1.1, 'D', transform=ax3.transAxes, size=12, weight='bold')
+    ax4.text(-0.1, 1.1, 'E', transform=ax4.transAxes, size=12, weight='bold')
+    ax5.text(-0.1, 1.1, 'F', transform=ax5.transAxes, size=12, weight='bold')
+    ax6.text(-0.1, 1.1, 'G', transform=ax6.transAxes, size=12, weight='bold')
+    ax7.text(-0.1, 1.1, 'H', transform=ax7.transAxes, size=12, weight='bold')
+    ax8.text(-0.1, 1.1, 'I', transform=ax8.transAxes, size=12, weight='bold')
+    #plt.tight_layout()
+
+
 
 def fig_8(ffwd,net,rnn):
 
