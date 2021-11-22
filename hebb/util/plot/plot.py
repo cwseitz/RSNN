@@ -96,6 +96,21 @@ def add_activity(ax, spikes, trial=0, color='red'):
 
     ax.plot(np.sum(spikes[:,trial,:], axis=0), color=color)
 
+def add_volt_hist(ax, v, dv=2):
+
+    """
+    Plot the histogram of voltages at a single time point
+
+    Parameters
+    ----------
+    """
+
+    N = v.shape[0]
+    bins = np.arange(v.min(), v.max(), dv)
+    vals, bins = np.histogram(v, bins=bins)
+    vals = vals/(np.sum(vals)*dv) #normalize by integral
+    ax.plot(bins[:-1], vals, color='purple',alpha=0.75)
+
 def add_rate_hist(ax, spikes, dt, dr=10):
 
     """
@@ -203,7 +218,7 @@ def add_cc_hist(ax, x, dt, color='red', rand_select=300):
 #     ax.plot(np.mean(arr,axis=0)/1000,color=color)
 
 
-def add_mean_cc(ax, x, dt, color='red'):
+def add_mean_cc(ax, x, dt, color='red', linestyle='-'):
 
     """
     Plot the average cross-correlation
@@ -225,9 +240,9 @@ def add_mean_cc(ax, x, dt, color='red'):
     s = s[idx_x,idx_y,:,:]
     avg = np.mean(s, axis=(0,1))
     avg = np.roll(avg, avg.shape[0]//2)
-    ax.plot(t, avg, color=color,alpha=0.5)
+    ax.plot(t, avg, color=color,alpha=1, linestyle=linestyle)
 
-def add_mean_ac(ax, x, dt, color='red'):
+def add_mean_ac(ax, x, dt, color='red', linestyle='-'):
 
     """
     Plot the average auto-correlation
@@ -249,10 +264,10 @@ def add_mean_ac(ax, x, dt, color='red'):
     s = s[idx_x,idx_y,:,:]
     avg = np.mean(s, axis=(0,1))
     avg = np.roll(avg, avg.shape[0]//2)
-    ax.plot(t, avg, color=color,alpha=0.5)
+    ax.plot(t, avg, color=color,alpha=1, linestyle=linestyle)
 
 
-def add_mean_cs(ax, x, dt, color='red', rand_select=300):
+def add_mean_cs(ax, x, dt, color='red', linestyle='-'):
 
     """
     Plot the average cross spectrum
@@ -261,23 +276,18 @@ def add_mean_cs(ax, x, dt, color='red', rand_select=300):
     ----------
     """
 
-    n = x.shape[0]
-    T = x.shape[-1]
-    if rand_select != None:
-        g = np.arange(0,n,1)
-        v = np.random.choice(g,size=(int(rand_select),),replace=False)
-        x = x[v,:,:]
-
     freq = np.fft.fftfreq(x.shape[-1], d=dt)
+    T = x.shape[-1]
+
     #indices of off-diagonal elements
     s = block_spectra(x, magnitude=True)
     idx_x, idx_y = np.where(~np.eye(s.shape[0],dtype=bool))
     s = s[idx_x,idx_y,:,:]
     avg = np.mean(s, axis=(0,1))
-    ax.plot(freq[1:T//2],avg[1:T//2], color=color)
+    ax.plot(freq[1:T//2],avg[1:T//2], color=color, linestyle=linestyle)
     ax.set_ylim([0,avg[1:T//2].max()])
 
-def add_mean_as(ax, x, dt, color='red', rand_select=300):
+def add_mean_as(ax, x, dt, color='red', linestyle='-'):
 
     """
     Plot the mean autospectrum (standard power spectrum of one signal)
@@ -287,19 +297,14 @@ def add_mean_as(ax, x, dt, color='red', rand_select=300):
     """
 
     freq = np.fft.fftfreq(x.shape[-1], d=dt)
-    n = x.shape[0]
     T = x.shape[-1]
-    if rand_select != None:
-        g = np.arange(0,n,1)
-        v = np.random.choice(g,size=(int(rand_select),),replace=False)
-        x = x[v,:,:]
 
     #indices of diagonal elements
     s = block_spectra(x, magnitude=True)
     idx_x, idx_y = np.where(np.eye(s.shape[0],dtype=bool))
     s = s[idx_x,idx_y,:,:]
     avg = np.mean(s, axis=(0,1))
-    ax.plot(freq[1:T//2],avg[1:T//2], color=color)
+    ax.plot(freq[1:T//2],avg[1:T//2], color=color, linestyle=linestyle)
     ax.set_ylim([0,avg[1:T//2].max()])
 
 

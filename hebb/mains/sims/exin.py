@@ -5,7 +5,7 @@ from hebb.util import *
 q = 0.5
 dt = 0.1
 N = 20000
-Nrecord = 300
+Nrecord = 500
 T = 10000
 Nt = int(round(T/dt))
 N_e = int(round(q*N))

@@ -14,12 +14,14 @@ spikes = npzfile['arr_4']
 
 #slice the data to consider only the steady state
 t_ss = 2000
+n = 200
 dt = 0.1
 
-v = v[:,:,-t_ss:]
-i_e = i_e[:,:,-t_ss:]
-i_i = i_i[:,:,-t_ss:]
-ffwd = ffwd[:,:,-t_ss:]
+v = v[:n,:,-t_ss:]
+i_e = i_e[:n,:,-t_ss:]
+i_i = i_i[:n,:,-t_ss:]
+ffwd = ffwd[:n,:,-t_ss:]
+spikes = spikes[:n,:,-t_ss:]
 
 #filter entries in v, i_e, i_i, with zero variance in v
 std = v.std(axis=-1, keepdims=True)
@@ -29,5 +31,11 @@ i_e = np.delete(i_e,idx,axis=0)
 i_i = np.delete(i_i,idx,axis=0)
 ffwd = np.delete(ffwd,idx,axis=0)
 
-fig_7(v, i_e, i_i, ffwd, spikes, dt)
+#filter neurons which never spike - just to prevent divide by zero
+s = np.sum(spikes[:,0,:], axis=-1)
+idx = np.argwhere(s == 0)
+spikes = np.delete(spikes, idx, axis=0)
+
+fig_8(spikes, i_e, i_i, ffwd, dt)
+fig_9(i_e, i_i, ffwd, spikes, dt*1e-4)
 plt.show()
