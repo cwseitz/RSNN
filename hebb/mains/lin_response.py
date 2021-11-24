@@ -45,7 +45,7 @@ tauE = 5; tauI=2
 taus = np.zeros((N,1))
 taus[1:NE]=tauE; taus[NE+1:N]=tauI; #time constants for synaptic output of each cell, ms
 
-Tmax = 300 #Maximum time lag over which to calculate cross-correlations (ms)
+Tmax = 10 #Maximum time lag over which to calculate cross-correlations (ms)
 dt = 1 #Bin size for which to calculate cross-correlations (ms)
 u1 = 1
 df = 1/2/Tmax
@@ -94,7 +94,6 @@ for i in range(1,num_rate_fp_its):
 
 At = np.zeros((N,nfreq),dtype=np.cdouble)
 Ft = np.zeros((N,nfreq),dtype=np.cdouble)
-f00 = np.zeros((N,nfreq),dtype=np.cdouble)
 Ct0 = np.zeros((N,nfreq))
 
 tup = hebb_backend.FokkerPlanck_EIF(params)
@@ -108,6 +107,7 @@ for i in range(1,N):
     V1r,V1i,x1r,x1i,Ar,Ai = hebb_backend.LR_EIF(params)
 
     params = [N,gL,C,Delta,VT,VL,Vth,Vlb,dV,Vr,tref,tau_x,Vx,gx,x0,mu_in,var,u1,r0,freq,nfreq]
+
     f0r,f0i = hebb_backend.FPT_EIF(params)
     f0 = np.array(f0r) + np.array(f0i)*1j
     C0 = r0*(1+2*np.real(f0/(1-f0)))
@@ -115,10 +115,9 @@ for i in range(1,N):
     Ft[i,:] = np.exp(1j*-2*np.pi*np.array(freq)*taud[i])/(1+1j*2*np.pi*np.array(freq)*taus[i])
     At[i,:] = np.array(Ar) + np.array(Ai)*1j
     Ct0[i,:] = C0
-    f00[i,:] = f0
 
 save_dir = '/home/cwseitz/Desktop/data/'
-np.savez_compressed(save_dir + 'EIF_LA', At, Ft, Ct0, f00)
+np.savez_compressed(save_dir + 'EIFLR', At, Ft, Ct0, adj)
 
 # def eif_sim(N,Nt,gL,C,Delta,VT,Vth,dV,Vr,VL,mu,var):
 #
