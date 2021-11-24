@@ -60,10 +60,15 @@ xi = [x.item() for x in xi]
 params = [N,gL,C,Delta,VT,VL,Vth,Vlb,dV,Vr,tref,tau_x,Vx,gx,mu0,var,xi]
 
 #Generate the connectivity matrix
-p_xx = [0.25,0.25,0.25,0.25]
-J_xx = [0.1, 0.1, 0.1, 0.1]
-p_e = 0.5
-net = ExInFixedNetwork(N, p_e, p_xx, J_xx)
+adj = np.random.uniform(0,1,size=(N,N))
+pref = 0.15*np.ones((N,N))
+adj[adj > pref] = 0
+adj[adj != 0] = 1
+np.fill_diagonal(adj, 0)
+p0 = np.sum(adj)/(N**2)
+wmaxE = 5/(N*p0);
+p_cond = wmaxE*.25;
+adj[:NE,:NE]=p_cond*adj[:NE,:NE]
 
 ##################################################
 ## Fixed point iteration to find the rates
@@ -77,7 +82,7 @@ rates = r0*np.ones((N,))
 for i in range(1,num_rate_fp_its):
     tmp_rates = []
     for j in range(N):
-        mu = mu0 + np.sum(net.C[j,:]*rates)
+        mu = mu0 + np.sum(adj[j,:]*rates)
         params = [N,gL,C,Delta,VT,VL,Vth,Vlb,dV,Vr,tref,tau_x,Vx,gx,mu,var,xi]
         tup = hebb_backend.FokkerPlanck_EIF(params)
         tmp_rates.append(tup[4])
@@ -87,8 +92,9 @@ for i in range(1,num_rate_fp_its):
 ## Find linear response and synaptic kernel in the frequency domain
 ####################################################################
 
-At = np.zeros((N,nfreq))
-Ft = np.zeros((N,nfreq))
+At = np.zeros((N,nfreq),dtype=np.cdouble)
+Ft = np.zeros((N,nfreq),dtype=np.cdouble)
+f00 = np.zeros((N,nfreq),dtype=np.cdouble)
 Ct0 = np.zeros((N,nfreq))
 
 tup = hebb_backend.FokkerPlanck_EIF(params)
@@ -96,18 +102,23 @@ P0,p0,J0,x0,r0 = tup
 
 for i in range(1,N):
 
-    mu_in = mu0 + np.sum(net.C[i,:]*rates)
+    print(f'Neuron {i}')
+    mu_in = mu0 + np.sum(adj[i,:]*rates)
     params = [N,gL,C,Delta,VT,VL,Vth,Vlb,dV,Vr,tref,tau_x,Vx,gx,x0,mu_in,var,u1,r0,P0,xi,p0,freq,nfreq]
-    V1r,V1i,x1r,x1i,Ar,Ai = hebb_backend.LA_EIF(params)
+    V1r,V1i,x1r,x1i,Ar,Ai = hebb_backend.LR_EIF(params)
 
     params = [N,gL,C,Delta,VT,VL,Vth,Vlb,dV,Vr,tref,tau_x,Vx,gx,x0,mu_in,var,u1,r0,freq,nfreq]
     f0r,f0i = hebb_backend.FPT_EIF(params)
-    f0r,f0i = np.array(f0r),np.array(f0i)
-    C0 = r0*(1+2.*(f0r/(1-f0r)))
+    f0 = np.array(f0r) + np.array(f0i)*1j
+    C0 = r0*(1+2*np.real(f0/(1-f0)))
 
     Ft[i,:] = np.exp(1j*-2*np.pi*np.array(freq)*taud[i])/(1+1j*2*np.pi*np.array(freq)*taus[i])
     At[i,:] = np.array(Ar) + np.array(Ai)*1j
     Ct0[i,:] = C0
+    f00[i,:] = f0
+
+save_dir = '/home/cwseitz/Desktop/data/'
+np.savez_compressed(save_dir + 'EIF_LA', At, Ft, Ct0, f00)
 
 # def eif_sim(N,Nt,gL,C,Delta,VT,Vth,dV,Vr,VL,mu,var):
 #
