@@ -5,7 +5,8 @@ from hebb.models import *
 
 ##################################################
 ## Predicting spike train cross-correlations as
-## a function of synaptic connectivity
+## for excitatory-inhibitory random network
+## using the linear response approximation
 ##################################################
 ## Author: Clayton Seitz
 ## Copyright: 2021, The Hebb Project
@@ -45,7 +46,7 @@ tauE = 5; tauI=2
 taus = np.zeros((N,1))
 taus[1:NE]=tauE; taus[NE+1:N]=tauI; #time constants for synaptic output of each cell, ms
 
-Tmax = 10 #Maximum time lag over which to calculate cross-correlations (ms)
+Tmax = 50 #Maximum time lag over which to calculate cross-correlations (ms)
 dt = 1 #Bin size for which to calculate cross-correlations (ms)
 u1 = 1
 df = 1/2/Tmax
@@ -118,28 +119,3 @@ for i in range(1,N):
 
 save_dir = '/home/cwseitz/Desktop/data/'
 np.savez_compressed(save_dir + 'EIFLR', At, Ft, Ct0, adj)
-
-# def eif_sim(N,Nt,gL,C,Delta,VT,Vth,dV,Vr,VL,mu,var):
-#
-#     V = np.zeros((N,Nt))
-#     V[:,0] = Vr
-#     D = np.sqrt(2*C/gL)
-#     for i in range(N):
-#         for j in range(Nt):
-#             x = gL*np.sqrt(var)*D*np.random.normal(0,1) + mu
-#             V[i,j] = V[i,j-1] + (gL*(VL-V[i,j-1]) + gL*Delta*np.exp((V[i,j-1]-VT)/Delta) + x)/C
-#             if V[i,j] > Vth:
-#                 V[i,j] = Vr
-#
-#     return V
-#
-# N = 1000
-# Nt = 1000
-# mu = mu_vec[0]
-# var = sig2_vec[0]
-# V_mc = eif_sim(N,Nt,gL,C,Delta,VT,Vth,dV,Vr,VL,mu,var)
-#
-#
-# plt.plot(V,P0,color='blue')
-# plt.hist(V_mc[:,-1],density=True, bins=25, color='black', alpha=0.5)
-# plt.show()

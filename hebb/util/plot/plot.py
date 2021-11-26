@@ -279,18 +279,20 @@ def add_mean_cs(ax, x, dt, color='red', linestyle='-'):
     freq = np.fft.fftfreq(x.shape[-1], d=dt)
     T = x.shape[-1]
 
-    #indices of off-diagonal elements
-    s = block_spectra(x, magnitude=True)
-    idx_x, idx_y = np.where(~np.eye(s.shape[0],dtype=bool))
-    s = s[idx_x,idx_y,:,:]
-    avg = np.mean(s, axis=(0,1))
-    ax.plot(freq[1:T//2],avg[1:T//2], color=color, linestyle=linestyle)
-    ax.set_ylim([0,avg[1:T//2].max()])
+    # #indices of off-diagonal elements
+    # s = block_spectra(x, magnitude=True)
+
+    # idx_x, idx_y = np.where(~np.eye(x.shape[0],dtype=bool))
+    # x = x[idx_x,idx_y,:,:]
+    avg = np.mean(x, axis=(0,1,2))
+    ax.plot(avg)
+    # ax.plot(freq[1:T//2],avg[1:T//2], color=color, linestyle=linestyle)
+    # ax.set_ylim([0,avg[1:T//2].max()])
 
 def add_mean_as(ax, x, dt, color='red', linestyle='-'):
 
     """
-    Plot the mean autospectrum (standard power spectrum of one signal)
+    Plot the average cross spectrum
 
     Parameters
     ----------
@@ -299,13 +301,16 @@ def add_mean_as(ax, x, dt, color='red', linestyle='-'):
     freq = np.fft.fftfreq(x.shape[-1], d=dt)
     T = x.shape[-1]
 
-    #indices of diagonal elements
-    s = block_spectra(x, magnitude=True)
-    idx_x, idx_y = np.where(np.eye(s.shape[0],dtype=bool))
-    s = s[idx_x,idx_y,:,:]
-    avg = np.mean(s, axis=(0,1))
-    ax.plot(freq[1:T//2],avg[1:T//2], color=color, linestyle=linestyle)
-    ax.set_ylim([0,avg[1:T//2].max()])
+    # #indices of off-diagonal elements
+    # s = block_spectra(x, magnitude=True)
+
+    # idx_x, idx_y = np.where(np.eye(x.shape[0],dtype=bool))
+    # x = x[idx_x,idx_y,:,:]
+    avg = np.mean(x, axis=(0,1,2))
+    avg = np.fft.fftshift(avg)
+    ax.plot(avg)
+    # ax.plot(freq[1:T//2],avg[1:T//2], color=color, linestyle=linestyle)
+    # ax.set_ylim([0,avg[1:T//2].max()])
 
 
 """

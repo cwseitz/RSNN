@@ -672,7 +672,6 @@ def fig_5(N=400, sigma_e=5, sigma_i=5, q=0.8, p_e=0.8):
     ax.plot(ex_ex_dists,ex_ex_nshared, color='red')
     ax.plot(ex_in_dists,ex_in_nshared, color='blue')
 
-
 def fig_6(rnn, net, focal=0):
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 10))
@@ -696,10 +695,6 @@ def fig_6(rnn, net, focal=0):
     add_unit_spikes(ax5, rnn, unit=focal)
 
     plt.tight_layout()
-
-
-
-    #plt.tight_layout()
 
 def fig_7(v, i_e, i_i, ffwd, spikes, dt):
 
@@ -865,15 +860,7 @@ def fig_8(spikes, i_e, i_i, ffwd, dt):
     ax1.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     plt.tight_layout()
 
-    # format_ax(ax3,
-    #           xlabel=r'$V (\mathrm{mV})$',
-    #           ylabel=r'$\mathrm{PDF}$',
-    #           ax_is_box=False,
-    #           label_fontsize='medium')
-
-
-
-def fig_9(i_e, i_i, ffwd, spikes, dt):
+def fig_9(spike_spec, tot_spec, ffwd_spec, rec_spec, dt):
 
     """
     Frequency domain analysis of the balanced state
@@ -895,32 +882,29 @@ def fig_9(i_e, i_i, ffwd, spikes, dt):
     ax6 = fig.add_subplot(gs[3, 0])
     ax7 = fig.add_subplot(gs[3, 1])
 
-    rec = i_e + i_i
-    total = rec + ffwd
-
     # add_mean_ac(ax0,spikes,dt,color='blue')
     # add_mean_cc(ax1,spikes,dt,color='black')
     # ax1.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
-    add_mean_as(ax0,spikes,dt,color='purple')
-    add_mean_cs(ax1,spikes,dt,color='purple', linestyle=':')
+    add_mean_as(ax0,spike_spec,dt,color='purple')
+    add_mean_cs(ax1,spike_spec,dt,color='purple', linestyle=':')
 
-    add_mean_as(ax2,ffwd,dt,color='black')
-    add_mean_cs(ax3,ffwd,dt,color='black', linestyle=':')
+    add_mean_as(ax2,ffwd_spec,dt,color='black')
+    add_mean_cs(ax3,ffwd_spec,dt,color='black', linestyle=':')
 
-    add_mean_as(ax4,rec,dt,color='blue')
-    add_mean_cs(ax5,rec,dt,color='blue', linestyle=':')
+    add_mean_as(ax4,rec_spec,dt,color='blue')
+    add_mean_cs(ax5,rec_spec,dt,color='blue', linestyle=':')
 
-    add_mean_as(ax6,total,dt,color='red')
-    add_mean_cs(ax7,total,dt,color='red', linestyle=':')
+    add_mean_as(ax6,tot_spec,dt,color='red')
+    add_mean_cs(ax7,tot_spec,dt,color='red', linestyle=':')
 
-    ax8 = inset_axes(ax6, width="30%", height="40%", loc=1)
-    add_mean_as(ax8, total, dt, color='red')
-    add_mean_as(ax8, rec, dt, color='blue')
-
-    ax9 = inset_axes(ax7, width="30%", height="40%", loc=1)
-    add_mean_cs(ax9, total, dt, color='red', linestyle='--')
-    add_mean_cs(ax9, rec, dt, color='blue', linestyle='--')
+    # ax8 = inset_axes(ax6, width="30%", height="40%", loc=1)
+    # add_mean_as(ax8, total, dt, color='red')
+    # add_mean_as(ax8, rec, dt, color='blue')
+    #
+    # ax9 = inset_axes(ax7, width="30%", height="40%", loc=1)
+    # add_mean_cs(ax9, total, dt, color='red', linestyle='--')
+    # add_mean_cs(ax9, rec, dt, color='blue', linestyle='--')
 
     format_ax(ax0,
               xlabel=r'$\omega/2\pi\; (\mathrm{Hz})$',
@@ -970,19 +954,20 @@ def fig_9(i_e, i_i, ffwd, spikes, dt):
               ax_is_box=False,
               label_fontsize='medium')
 
-    ax0.set_xlim([0,5000])
-    ax1.set_xlim([0,5000])
-    ax2.set_xlim([0,5000])
-    ax3.set_xlim([0,5000])
-    ax4.set_xlim([0,5000])
-    ax5.set_xlim([0,5000])
-    ax6.set_xlim([0,5000])
-    ax7.set_xlim([0,5000])
-    ax8.set_xlim([30000,35000])
-    ax8.set_ylim([0,0.1])
-    ax8.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
-    ax9.set_xlim([30000,35000])
-    ax9.set_ylim([0,0.1])
-    ax9.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    ax0.set_xlim([0,1000])
+    ax1.set_xlim([0,1000])
+    ax2.set_xlim([0,1000])
+    ax3.set_xlim([0,1000])
+    ax4.set_xlim([0,1000])
+    ax5.set_xlim([0,1000])
+    ax6.set_xlim([0,1000])
+    ax7.set_xlim([0,1000])
+
+    # ax8.set_xlim([30000,35000])
+    # ax8.set_ylim([0,0.1])
+    # ax8.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    # ax9.set_xlim([30000,35000])
+    # ax9.set_ylim([0,0.1])
+    # ax9.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 
     plt.tight_layout()

@@ -29,7 +29,7 @@ class RNN:
         self.Irecord = [x.item() for x in self.Irecord] #convert to native type
         self.shape = (self.N,self.trials,self.Nt)
 
-class ExInEIF(RNN):
+class ExInEIF_Fixed(RNN):
 
     def __init__(self,N,trials,Nrecord,T,Nt,N_e,N_i,q,dt,pee0,pei0,pie0,pii0,jee,jei,
                  jie,jii,wee0,wei0,wie0,wii0,Kee,Kei,Kie,Kii,taux,
@@ -37,16 +37,13 @@ class ExInEIF(RNN):
                  DeltaT,vT,vl,vre,tref, mxe, mxi, vxe, vxi):
 
         """
-
         Wrapper object for exponential integrate-and-fire (EIF) RNN in C
-
         Parameters
         ----------
         See comments below
-
         """
 
-        super(ExInEIF, self).__init__(N, T, dt, trials, Nrecord)
+        super(ExInEIF_Fixed, self).__init__(N, T, dt, trials, Nrecord)
         self.V = []; self.I_e = []; self.I_i = []; self.spikes = []
         self.ffwd = []
 
@@ -114,7 +111,92 @@ class ExInEIF(RNN):
 
 
         for i in range(self.trials):
-            ctup = hebb_backend.EIF(params)
+            ctup = hebb_backend.mc_eif_fixed(params)
+            self.add_trial(ctup)
+
+        self.V = np.array(self.V)
+        self.V = np.swapaxes(np.swapaxes(self.V,1,2),0,1)
+        self.I_e = np.swapaxes(np.swapaxes(self.I_e,1,2),0,1)
+        self.I_i = np.swapaxes(np.swapaxes(self.I_i,1,2),0,1)
+        self.ffwd = np.swapaxes(np.swapaxes(self.ffwd,1,2),0,1)
+        self.spikes = np.swapaxes(self.spikes,0,1)
+
+    def add_trial(self, tup):
+
+        s, v, i_e, i_i, i_x, ffwd = tup
+
+        nspikes_record = self.Nrecord #not recording spikes from same neurons as currents
+        trial_spikes = np.zeros((nspikes_record, self.Nt), dtype=np.bool)
+        for unit in range(nspikes_record):
+            slice = s[s[:,1] == unit]
+            spike_times = slice[:,0]
+            for time in spike_times:
+                trial_spikes[unit,int(round(time/self.dt))] = 1
+
+        self.V.append(v)
+        self.I_e.append(i_e)
+        self.I_i.append(i_i)
+        self.ffwd.append(ffwd)
+        self.spikes.append(trial_spikes)
+
+class ExInEIF_Rand(RNN):
+
+    def __init__(self,N,trials,Nrecord,T,Nt,N_e,N_i,q,dt,taux,
+                 tausyne,tausyni,tausynx,maxns,gl,Cm,vlb,vth,
+                 DeltaT,vT,vl,vre,tref, mxe, mxi, vxe, vxi):
+
+        """
+        Wrapper object for exponential integrate-and-fire (EIF) RNN in C
+        Parameters
+        ----------
+        See comments below
+        """
+
+        super(ExInEIF_Rand, self).__init__(N, T, dt, trials, Nrecord)
+        self.V = []; self.I_e = []; self.I_i = []; self.spikes = []
+        self.ffwd = []
+
+        #Excitatory-inhibitory params
+        self.N_e = N_e #number of excitatory neurons
+        self.N_i = N_i #number of inhibitory neurons
+        self.q = q #Fraction of neurons that are excitatory
+        self.maxns=maxns #maximum number of spikes in a simulation
+
+        #Neuron params
+        self.tausyne=tausyne #time constant for epsp
+        self.tausyni=tausyni #time constant for ipsp
+        self.tausynx=tausynx #time constant for external psp (if input is spikes)
+        self.taux=taux
+
+        self.gl=gl #leak conductance
+        self.Cm=Cm #membrane capacitance
+        self.vlb=vlb #lower bound on the voltage
+        self.vth=vth #threshold
+        self.DeltaT=DeltaT #sharpness of AP generation
+        self.vT=vT #intrinsic membrane threshold
+        self.vl=vl #reversal potential for leak
+        self.vre=vre #resting potential
+        self.tref=tref #duration of the refractory period
+
+        self.mxe = mxe
+        self.mxi = mxi
+        self.vxe = vxe
+        self.vxi = vxi
+
+
+    def call(self, v0, net):
+
+        #Construct parameter list for call to C backend
+
+        net = list(net.T.flatten()) #transpose for column-wise order
+        params = [self.N,self.Nrecord,self.T,self.Nt,self.N_e,self.N_i,self.q,
+        self.dt,self.taux,self.mxe,self.mxi,self.vxe,
+        self.vxi,self.tausyne,self.tausyni,self.tausynx
+        ,self.maxns,self.gl,self.Cm,self.vlb,self.vth,self.DeltaT,
+        self.vT,self.vl,self.vre,self.tref,self.Nrecord,self.Irecord,v0,net]
+
+        for i in range(self.trials):
+            ctup = hebb_backend.mc_eif_rand(params)
             self.add_trial(ctup)
 
         self.V = np.array(self.V)

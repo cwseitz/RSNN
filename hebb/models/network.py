@@ -21,7 +21,7 @@ class ExInFixedNetwork:
     This function generates a random network of excite and inhib neurons
 
     Synaptic weights are scaled as 1/sqrt(N). This is not a binomial random
-    graph! It is assumed that that probability of a synapse, for example,
+    graph. It is assumed that that probability of a synapse, for example,
     p_ee gives exactly C_ee = p_ee*N connections between and excitatory neurons
 
     This function allows synaptic loops, for the sake of run time
@@ -43,7 +43,7 @@ class ExInFixedNetwork:
         self.J_ee, self.J_ei, self.J_ie, self.J_ii = J_xx
 
         # Initialize connectivity matrix
-        self.C = np.zeros((self.N, self.N))
+        self.C = np.zeros((self.N, self.N),dtype=np.float16)
         self.k_ee = int(round(self.p_ee*self.n_e))
         self.k_ie = int(round(self.p_ie*self.n_e))
         self.k_ei = int(round(self.p_ei*self.n_i))
