@@ -729,9 +729,10 @@ def fig_7(v, i_e, i_i, ffwd, spikes, dt):
     add_avg_current(ax3,total[:,0,:], dt, color='cyan')
     add_avg_current(ax3,ffwd[:,0,:], dt, color='black')
 
-    add_curr_hist(ax4, rec, color='purple', label='R(t)') #recurrent inputs
-    add_curr_hist(ax4, total, color='cyan', label='I(t)') #total inputs
-    add_curr_hist(ax4, ffwd, color='black', label='F(t)') #ffwd inputs
+    # add_curr_hist(ax4, rec, color='purple', label='R(t)') #recurrent inputs
+    # add_curr_hist(ax4, total, color='cyan', label='I(t)') #total inputs
+    ax4.hist(ffwd[:,0,:].flatten(), color='black')
+    #add_curr_hist(ax4, ffwd, color='black', label='F(t)') #ffwd inputs
 
     format_ax(ax0,
               xlabel=r'$\mathrm{Time} \;(\mathrm{ms})$',

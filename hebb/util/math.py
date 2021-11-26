@@ -34,7 +34,7 @@ def mean_field_rates(N, mxe, mxi, w_ee, w_ii, w_ei, w_ie, thr, tau_e, tau_i):
 
     return r_e, r_i
 
-def block_fft(x, magnitude=False):
+def block_fft(x, n, magnitude=False):
 
     """
     Computes the discrete fast fourier transform for a tensor
@@ -47,12 +47,12 @@ def block_fft(x, magnitude=False):
     ----------
     """
 
-    x_t = fft(x,axis=-1)
+    x_t = fft(x,n,axis=-1)
     if magnitude:
         x_t = np.abs(x_t)
     return x_t
 
-def block_spectra(x,magnitude=False):
+def block_spectra(x,n,magnitude=False):
 
     """
     Computes the cross-spectral densities and auto-spectral densities
@@ -64,7 +64,7 @@ def block_spectra(x,magnitude=False):
     ----------
     """
 
-    x_t = block_fft(x,magnitude=False)
+    x_t = block_fft(x,n,magnitude=False)
     trials = x_t.shape[1]
     nsteps = x_t.shape[-1]
 
@@ -84,7 +84,7 @@ def block_spectra(x,magnitude=False):
 
     return arr
 
-def block_cc(x):
+def block_cc(x,n):
 
     """
     Computes the cross-correlation of a tensor of synaptic currents with shape
@@ -95,7 +95,7 @@ def block_cc(x):
     ----------
     """
 
-    x_t = block_spectra(x,magnitude=False)
+    x_t = block_spectra(x,n,magnitude=False)
     cc = np.real(ifft(x_t,axis=-1))
     return cc
 

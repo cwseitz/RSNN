@@ -210,7 +210,7 @@ class ExInEIF_Rand(RNN):
 
         s, v, i_e, i_i, i_x, ffwd = tup
 
-        nspikes_record = 1000 #not recording spikes from same neurons as currents
+        nspikes_record = self.Nrecord #not recording spikes from same neurons as currents
         trial_spikes = np.zeros((nspikes_record, self.Nt), dtype=np.bool)
         for unit in range(nspikes_record):
             slice = s[s[:,1] == unit]

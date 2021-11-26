@@ -34,11 +34,6 @@ v0 = np.random.uniform(v0min, v0max, size=(params['N'],))
 v0 = list(v0)
 v0 = [x.item() for x in v0]
 
-# print(f'\nThis list should be decreasing for a balanced state to exist: {params['mxe0']/params['mxi0']},{params['wei0']/params['wii0']},{params['wee0']/params['wie0']}\n')
-# print(f'Also, this number should be greater than 1: {params['wii0']/params['wee0']}\n')
-# print(f'E Rate: {(params['mxe0']*params['wii0']-params['mxi0']*params['wei0')/(params['wei0'*params['wie0']-params['wee0']*params['wii0'])} \n ')
-# print(f'I Rate {(params['mxe0']*params['wii0']-params['mxi0']*params['wei0')/(params['wei0'*params['wie0']-params['wee0']*params['wii0'])}')
-
 rnn = ExInEIF_Rand(params['N'],
                   params['trials'],
                   params['Nrecord'],
@@ -73,7 +68,7 @@ rnn.call(v0,net)
 ## Extract steady state
 ########################
 
-t_ss = 1000
+t_ss = int(round(params['Tmax']/params['dt']/1e-3))
 spikes = rnn.spikes[:,:,-t_ss:]
 ie = rnn.I_e[:,:,-t_ss:]
 ii = rnn.I_i[:,:,-t_ss:]
