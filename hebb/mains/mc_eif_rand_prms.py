@@ -21,7 +21,7 @@ trials = 1
 q = 0.5
 dt = 0.1
 N = 1000
-Nrecord = 500
+Nrecord = 100
 T = 10000
 Nt = int(round(T/dt))
 N_e = int(round(q*N))
@@ -81,8 +81,8 @@ tausynx = 12.0
 ########################
 
 taux = 40
-mxe = 0.015*np.sqrt(N)
-mxi = 0.01*np.sqrt(N)
+mxe = 5*0.015*np.sqrt(N)
+mxi = 5*0.01*np.sqrt(N)
 vxe = 0.05
 vxi = 0.05
 

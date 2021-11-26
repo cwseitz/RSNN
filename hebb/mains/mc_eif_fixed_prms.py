@@ -20,7 +20,7 @@ save_dir = '/home/cwseitz/Desktop/data/'
 trials = 1
 q = 0.5
 dt = 0.1
-N = 10000
+N = 1000
 Nrecord = 100
 T = 10000
 Nt = int(round(T/dt))
@@ -58,26 +58,28 @@ maxns = N*T*0.02
 ## Define neuron params
 ########################
 
-gl = [1/15, 1/10]
+gl = [1/10, 1/10]
 Cm = [1.0, 1.0]
 vlb = [-100.0, -100.0]
 vth = [-10.0, -10.0]
 vl = [-60.0, -60.0]
-DeltaT = [2.0, 0.5]
+DeltaT = [2.0, 2.0]
 vT = [-50.0, -50.0]
 vre = [-65.0, -65.0]
-tref = [1.5, 0.5]
-tausyne = 8.0
+tref = [1.5, 1.5]
+tausyne = 4.0
 tausyni = 4.0
-tausynx = 12.0
+tausynx = 4.0
 
 ########################
 ## Define stim params
 ########################
 
 taux = 40
-mxe = 0.015*np.sqrt(N)
-mxi = 0.01*np.sqrt(N)
+# mxe = 0.015*np.sqrt(N)
+# mxi = 0.01*np.sqrt(N)
+mxe = 5*0.015*np.sqrt(N)
+mxi = 5*0.01*np.sqrt(N)
 vxe = 0.05
 vxi = 0.05
 

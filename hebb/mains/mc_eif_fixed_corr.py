@@ -3,6 +3,12 @@ import matplotlib.pyplot as plt
 import json
 from hebb.util import *
 
+def normalize(x):
+    std = x.std(axis=-1, keepdims=True)
+    mu = x.mean(axis=-1, keepdims=True)
+    x = (x - mu)/std
+    return x
+
 save_dir = '/home/cwseitz/Desktop/data/'
 #######################################
 ## Load the parameters used
@@ -20,32 +26,44 @@ iifile = 'mc_eif_fixed_ii.npz'
 ffwdfile = 'mc_eif_fixed_ffwd.npz'
 spikesfile = 'mc_eif_fixed_spikes.npz'
 
-#######################################
-## Compute cross spectra of F,R,I,Z
-#######################################
-
 spikes = np.load(save_dir + spikesfile)['arr_0']
-print('Computing Z cross spectra...')
-spec = block_spectra(spikes)
-np.savez_compressed(save_dir + 'mc_eif_fixed_z_spec', spec)
-del spec; del spikes
-
-print('Computing R cross spectra...')
 ie = np.load(save_dir + iefile)['arr_0']
 ii = np.load(save_dir + iifile)['arr_0']
-total = ie + ii
-spec = block_spectra(total)
-np.savez_compressed(save_dir + 'mc_eif_fixed_r_spec', spec)
-del spec; del ie; del ii
-
-print('Computing I cross spectra...')
 ffwd = np.load(save_dir + ffwdfile)['arr_0']
-spec = block_spectra(ffwd+total)
-np.savez_compressed(save_dir + 'mc_eif_fixed_i_spec', spec)
-del spec; del total
 
+#######################################
+## Clean and normalize the data
+#######################################
 
-print('Computing F cross spectra...')
-spec = block_spectra(ffwd)
-np.savez_compressed(save_dir + 'mc_eif_fixed_f_spec', spec)
-del spec; del ffwd
+dt = params['dt']
+s = np.std(ie, axis=-1)
+idx = np.argwhere(s == 0)
+ie = normalize(np.delete(ie,idx,axis=0))
+ii = normalize(np.delete(ii,idx,axis=0))
+ffwd = normalize(np.delete(ffwd,idx,axis=0))
+s = np.sum(spikes[:,0,:], axis=-1)
+idx = np.argwhere(s == 0)
+spikes = normalize(np.delete(spikes,idx,axis=0))
+
+#######################################
+## Compute cross-corr of F,R,I,Z
+#######################################
+
+total = ie + ii + ffwd
+rec = ie + ii
+
+print('Computing Z cross-corr...')
+spike_cc = block_cc(spikes)
+np.savez_compressed(save_dir + 'mc_eif_fixed_z_cc', spike_cc)
+
+print('Computing R cross-corr...')
+total_cc = block_cc(total)
+np.savez_compressed(save_dir + 'mc_eif_fixed_r_cc', total_cc)
+
+print('Computing I cross-corr...')
+ffwd_cc = block_cc(ffwd)
+np.savez_compressed(save_dir + 'mc_eif_fixed_i_cc', ffwd_cc)
+
+print('Computing F cross-corr...')
+rec_cc = block_cc(rec)
+np.savez_compressed(save_dir + 'mc_eif_fixed_f_cc', rec_cc)

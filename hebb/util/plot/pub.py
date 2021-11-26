@@ -719,7 +719,7 @@ def fig_7(v, i_e, i_i, ffwd, spikes, dt):
     total = rec + ffwd
     t_ss = rec.shape[-1]
 
-    x = 40; y = 100
+    x = 40; y = 10
     add_raster(ax0, spikes[:200,0,-2000:], dt, color='black')
     add_unit_voltage(ax1, v, dt, unit=x, trial=0, color='red')
     add_unit_voltage(ax1, v, dt, unit=y, trial=0, color='purple')

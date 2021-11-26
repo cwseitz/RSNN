@@ -73,7 +73,7 @@ rnn.call(v0,net)
 ## Extract steady state
 ########################
 
-t_ss = 100
+t_ss = 1000
 spikes = rnn.spikes[:,:,-t_ss:]
 ie = rnn.I_e[:,:,-t_ss:]
 ii = rnn.I_i[:,:,-t_ss:]
@@ -90,6 +90,3 @@ np.savez_compressed(save_dir + 'mc_eif_rand_ii', ii)
 np.savez_compressed(save_dir + 'mc_eif_rand_ffwd', ffwd)
 np.savez_compressed(save_dir + 'mc_eif_rand_spikes', spikes)
 del rnn
-print('Computing cross spectra...')
-spec = block_spectra(spikes)
-np.savez_compressed(save_dir + 'mc_eif_rand_spec', spec)

@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import hebb_backend
-import json
 from hebb.models import *
 
 ##################################################
@@ -14,48 +13,40 @@ from hebb.models import *
 ## Email: cwseitz@uchicago.edu
 ##################################################
 
-save_dir = '/home/cwseitz/Desktop/data/'
 
-#######################################
-## Load the parameters used
-#######################################
+# SA = 2.5*10^-4
+NE = 1000
+NI = 0
+N = NE + NI
+gL = 0.1
+C = 1
+Delta = 1.4
+VT = -48
+Vth = 30
+Vlb = -100
+dV = .1
+Vr = -72
+VL = Vr
+tref = 2
 
-with open(save_dir + 'params.json', 'r') as fh:
-    params = json.load(fh)
-
-N = params['N']
-N_e = params['N_e']
-N_i = params['N_i']
-gl = params['gl'][0]
-Cm = params['Cm'][0]
-DeltaT = params['DeltaT'][0]
-vT = params['vT'][0]
-vth = params['vth'][0]
-vlb = params['vlb'][0]
-vre = params['vre'][0]
-vl = params['vl'][0]
-tref = params['tref'][0]
-dV = 0.1
-V = np.arange(vlb, vth, dV)
-
-#as far as in know, these dont matter
 tau_x = 200
 Vx = -85
 gx = 0
+
+V = np.arange(Vlb, Vth, dV)
+
 Dx = 8
 Vxh = -40
 xi = 1/(1+np.exp(-(V-Vxh)/Dx))
 
-mu0 = params['mxe']
-var = params['vxe']
-D = gl*np.sqrt(2*var*Cm/gl)
+mu0 = 1
+var = 81
+D = gL*np.sqrt(2*var*C/gL)
 
-taud = 0*np.ones((N,1)) #synaptic delay
-tausyne = params['tausyne']
-tausyni = params['tausyni']
+taud = 0*np.ones((N,1)) #synaptic delays for output of each cell, ms
+tauE = 5; tauI=2
 taus = np.zeros((N,1))
-taus[:N_e] = tausyne
-taus[N_e:] = tausyni
+taus[1:NE]=tauE; taus[NE+1:N]=tauI; #time constants for synaptic output of each cell, ms
 
 Tmax = 50 #Maximum time lag over which to calculate cross-correlations (ms)
 dt = 1 #Bin size for which to calculate cross-correlations (ms)
@@ -69,10 +60,18 @@ freq = freq.tolist()
 nfreq = len(freq)
 
 xi = [x.item() for x in xi]
-params = [N,gl,Cm,DeltaT,vT,vl,vth,vlb,dV,vre,tref,tau_x,Vx,gx,mu0,var,xi]
+params = [N,gL,C,Delta,VT,VL,Vth,Vlb,dV,Vr,tref,tau_x,Vx,gx,mu0,var,xi]
 
 #Generate the connectivity matrix
-net = np.load(save_dir + 'mc_eif_rand_weights.npz')['arr_0']
+adj = np.random.uniform(0,1,size=(N,N))
+pref = 0.15*np.ones((N,N))
+adj[adj > pref] = 0
+adj[adj != 0] = 1
+np.fill_diagonal(adj, 0)
+p0 = np.sum(adj)/(N**2)
+wmaxE = 5/(N*p0);
+p_cond = wmaxE*.25;
+adj[:NE,:NE]=p_cond*adj[:NE,:NE]
 
 ##################################################
 ## Fixed point iteration to find the rates
@@ -83,17 +82,14 @@ P0,p0,J0,x0,r0 = tup
 
 num_rate_fp_its = 20
 rates = r0*np.ones((N,))
-
-for i in range(num_rate_fp_its):
+for i in range(1,num_rate_fp_its):
     tmp_rates = []
     for j in range(N):
-        s = np.sum(net[j,:]*rates)
-        mu = mu0 + s
-        params = [N,gl,Cm,DeltaT,vT,vl,vth,vlb,dV,vre,tref,tau_x,Vx,gx,mu,var,xi]
-        tup = hebb_backend.fp_eif(params)
+        mu = mu0 + np.sum(adj[j,:]*rates)
+        params = [N,gL,C,Delta,VT,VL,Vth,Vlb,dV,Vr,tref,tau_x,Vx,gx,mu,var,xi]
+        tup = hebb_backend.FokkerPlanck_EIF(params)
         tmp_rates.append(tup[4])
     rates = np.array(tmp_rates)
-
 
 ####################################################################
 ## Find linear response and synaptic kernel in the frequency domain
@@ -106,16 +102,16 @@ Ct0 = np.zeros((N,nfreq))
 tup = hebb_backend.fp_eif(params)
 P0,p0,J0,x0,r0 = tup
 
-for i in range(N):
+for i in range(1,N):
 
     print(f'Neuron {i}')
-    mu_in = mu0 + np.sum(net[i,:]*rates)
-    params = [N,gl,Cm,DeltaT,vT,vl,vth,vlb,dV,vre,tref,tau_x,Vx,gx,x0,mu_in,var,u1,r0,P0,xi,p0,freq,nfreq]
-
+    mu_in = mu0 + np.sum(adj[i,:]*rates)
+    params = [N,gL,C,Delta,VT,VL,Vth,Vlb,dV,Vr,tref,tau_x,Vx,gx,x0,mu_in,var,u1,r0,P0,xi,p0,freq,nfreq]
     V1r,V1i,x1r,x1i,Ar,Ai = hebb_backend.lr_eif(params)
-    params = [N,gl,Cm,DeltaT,vT,vl,vth,vlb,dV,vre,tref,tau_x,Vx,gx,x0,mu_in,var,u1,r0,freq,nfreq]
-    f0r,f0i = hebb_backend.fpt_eif(params)
 
+    params = [N,gL,C,Delta,VT,VL,Vth,Vlb,dV,Vr,tref,tau_x,Vx,gx,x0,mu_in,var,u1,r0,freq,nfreq]
+
+    f0r,f0i = hebb_backend.fpt_eif(params)
     f0 = np.array(f0r) + np.array(f0i)*1j
     C0 = r0*(1+2*np.real(f0/(1-f0)))
 
@@ -123,11 +119,5 @@ for i in range(N):
     At[i,:] = np.array(Ar) + np.array(Ai)*1j
     Ct0[i,:] = C0
 
-plt.imshow(np.real(At))
-plt.show()
-
-# Ft_e_r = np.mean(np.real(At[:N_e]),axis=0)
-# Ft_e_i = np.mean(np.imag(At[:N_e]),axis=0)
-# plt.plot(Ft_e_r)
-# plt.plot(Ft_e_i)
-# plt.show()
+# save_dir = '/home/cwseitz/Desktop/data/'
+# np.savez_compressed(save_dir + 'EIFLR', At, Ft, Ct0, adj)
