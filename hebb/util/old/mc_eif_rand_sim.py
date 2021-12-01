@@ -68,7 +68,8 @@ rnn.call(v0,net)
 ## Extract steady state
 ########################
 
-t_ss = int(round(params['Tmax']/params['dt']/1e-3))
+t_ss = int(round(params['Tmax']/params['dt']))
+t_ss = 100
 spikes = rnn.spikes[:,:,-t_ss:]
 ie = rnn.I_e[:,:,-t_ss:]
 ii = rnn.I_i[:,:,-t_ss:]
@@ -76,7 +77,7 @@ ffwd = rnn.ffwd[:,:,-t_ss:]
 v = rnn.V[:,:,-t_ss:]
 
 ########################
-## Compute cross-spectra
+## Save data
 ########################
 
 np.savez_compressed(save_dir + 'mc_eif_rand_v', v)

@@ -111,7 +111,7 @@ def add_volt_hist(ax, v, dv=2):
     vals = vals/(np.sum(vals)*dv) #normalize by integral
     ax.plot(bins[:-1], vals, color='purple',alpha=0.75)
 
-def add_rate_hist(ax, spikes, dt, dr=10):
+def add_rate_hist(ax, spikes, dt, min=0, max=20, nbins=10):
 
     """
     Plot the histogram of firing rates for excitatory and inhibitory neurons
@@ -122,9 +122,8 @@ def add_rate_hist(ax, spikes, dt, dr=10):
 
     N = spikes.shape[0]
     rates = 1000*np.sum(spikes,axis=0)/(N*dt)
-    bins = np.arange(rates.min(), rates.max(), dr)
-    vals, bins = np.histogram(rates, bins=bins)
-    vals = vals/(np.sum(vals)*dr) #normalize by integral
+    bins = np.linspace(min, max, nbins)
+    vals, bins = np.histogram(rates, bins=nbins)
     ax.plot(bins[:-1], vals, color='black',alpha=0.5)
     return np.mean(rates)
 
@@ -230,12 +229,8 @@ def add_mean_cc(ax, x, dt, color='red', linestyle='-'):
     Nt = x.shape[-1]
     t = np.arange(-Nt//2,Nt//2,1)*dt
 
-    std = x.std(axis=-1, keepdims=True)
-    mu = x.mean(axis=-1, keepdims=True)
-    x = (x - mu)/std
-
     #indices of off-diagonal elements
-    s = block_cc(x)
+    s = block_cc(x,Nt)
     idx_x, idx_y = np.where(~np.eye(s.shape[0],dtype=bool))
     s = s[idx_x,idx_y,:,:]
     avg = np.mean(s, axis=(0,1))
@@ -254,12 +249,9 @@ def add_mean_ac(ax, x, dt, color='red', linestyle='-'):
     Nt = x.shape[-1]
     t = np.arange(-Nt//2,Nt//2,1)*dt
 
-    std = x.std(axis=-1, keepdims=True)
-    mu = x.mean(axis=-1, keepdims=True)
-    x = (x - mu)/std
 
     #indices of off-diagonal elements
-    s = block_cc(x)
+    s = block_cc(x,Nt)
     idx_x, idx_y = np.where(np.eye(s.shape[0],dtype=bool))
     s = s[idx_x,idx_y,:,:]
     avg = np.mean(s, axis=(0,1))

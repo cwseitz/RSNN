@@ -43,7 +43,7 @@ class ExInFixedNetwork:
         self.J_ee, self.J_ei, self.J_ie, self.J_ii = J_xx
 
         # Initialize connectivity matrix
-        self.C = np.zeros((self.N, self.N),dtype=np.float16)
+        self.C = np.zeros((self.N, self.N),dtype=np.float32)
         self.k_ee = int(round(self.p_ee*self.n_e))
         self.k_ie = int(round(self.p_ie*self.n_e))
         self.k_ei = int(round(self.p_ei*self.n_i))
@@ -63,10 +63,9 @@ class ExInFixedNetwork:
 
         np.fill_diagonal(self.C, 0)
 
-    def make_weighted(self):
         self.C[:self.n_e,:self.n_e] *= self.J_ee
-        self.C[self.n_e:,:self.n_e] *= self.J_ei
-        self.C[:self.n_e,self.n_e:] *= self.J_ie
+        self.C[self.n_e:,:self.n_e] *= self.J_ie
+        self.C[:self.n_e,self.n_e:] *= self.J_ei
         self.C[self.n_e:,self.n_e:] *= self.J_ii
 
 class ExInRandomNetwork:
@@ -96,7 +95,7 @@ class ExInRandomNetwork:
         self.q = q
 
         # Initialize connectivity matrix
-        self.C = np.zeros((self.N, self.N))
+        self.C = np.zeros((self.N, self.N),dtype=np.float16)
         self.k_ee = self.p_ee*np.ones((self.n_e,))
         self.k_ei = self.p_ei*np.ones((self.n_i,))
         self.k_ie = self.p_ie*np.ones((self.n_i,))

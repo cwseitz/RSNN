@@ -71,60 +71,27 @@ xi = [x.item() for x in xi]
 cell_prms = [gl,Cm,DeltaT,vT,vl,vth,vlb,dV,vre,tref,tau_x,Vx,gx]
 
 #Generate the connectivity matrix
-net = np.load(save_dir + 'mc_eif_rand_weights.npz')['arr_0']
+net = np.load(save_dir + 'mc_eif_ucpld_weights.npz')['arr_0']
 
 ##################################################
-## Fixed point iteration to find the rates
+## Solve Fokker-Planck for the uncoupled case
 ##################################################
 
-#Uncoupled rate
-tup = hebb_backend.fp_eif(cell_prms + [mu0,var,xi])
-P0,p0,J0,x0,r0 = tup
+#Solve Fokker-Planck for GWN
+M = 100
+mu_arr = np.linspace(0,5,M)
+At_arr = np.zeros((M,nfreq),dtype=np.cdouble)
 
-num_rate_fp_its = 20
-rates = r0*np.ones((N,))
-rates_temp = np.zeros((N,))
-
-
-for i in range(num_rate_fp_its):
-    for j in range(N):
-        s = np.sum(net[j,:]*rates)
-        mu = mu0 + s
-        tup = hebb_backend.fp_eif(cell_prms + [mu,var,xi])
-        rates_temp[j] = tup[4]
-    rates = np.array(rates_temp)
-
-###################################################################
-# Find linear response and synaptic kernel in the frequency domain
-###################################################################
-
-At = np.zeros((N,nfreq),dtype=np.cdouble)
-Ft = np.zeros((N,nfreq),dtype=np.cdouble)
-Ct0 = np.zeros((N,nfreq),dtype=np.cdouble)
-
-for i in range(N):
-
-    print(f'Neuron {i}')
-    mu_in = mu0 + np.sum(net[i,:]*rates)
+for i, mu in enumerate(mu_arr):
     tup = hebb_backend.fp_eif(cell_prms + [mu,var,xi])
     P0,p0,J0,x0,r0 = tup
-
-    params = cell_prms + [x0,mu_in,var,u1,r0,P0,xi,p0,freq,nfreq]
-    V1r,V1i,x1r,x1i,Ar,Ai = hebb_backend.lr_eif(params)
-    params = cell_prms + [x0,mu_in,var,u1,r0,freq,nfreq]
-    f0r,f0i = hebb_backend.fpt_eif(params)
-
-    f0 = np.array(f0r) + np.array(f0i)*1j
-    C0 = r0*(1+2*np.real(f0/(1-f0)))
-
-    Ft[i,:] = np.exp(1j*-2*np.pi*np.array(freq)*taud[i])/(1+1j*2*np.pi*np.array(freq)*taus[i])
-    At[i,:] = np.array(Ar) + np.array(Ai)*1j
-    Ct0[i,:] = C0
+    params = cell_prms + [x0,mu,var,u1,r0,P0,xi,p0,freq,nfreq]
+    V1r,V1i,x1r,x1i,Ar,Ai,alpha,beta = hebb_backend.lr_eif(params)
+    At = np.array(Ar) + np.array(Ai)*1j
+    At_arr[i,:] = At
 
 ########################
 # Write objects to disk
 ########################
 
-np.savez_compressed(save_dir + 'lr_eif_rand_lr', At)
-np.savez_compressed(save_dir + 'lr_eif_rand_kern', Ft)
-np.savez_compressed(save_dir + 'lr_eif_rand_c0', Ct0)
+np.savez_compressed(save_dir + 'lr_eif_ucpld_At', At_arr)

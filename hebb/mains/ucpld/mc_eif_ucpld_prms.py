@@ -26,51 +26,38 @@ T = 10000
 Nt = int(round(T/dt))
 N_e = int(round(q*N))
 N_i = int(round((1-q)*N))
-maxns = N*T*0.05
+maxns = N*T*0.1
 
 ########################
 ## Generate adj matrix
 ########################
 
-p_ee = 0.15
-pref = p_ee*np.ones((N,N))
-net = np.random.uniform(0,1,size=(N,N))
-net[net > pref] = 0
-net[net != 0] = 1
-np.fill_diagonal(net,0)
-
-p0 = np.sum(net)/(N**2)
-wmaxE = 5/(N*p0)
-p_cond = wmaxE*0.25
-net = p_cond*net
+net = np.zeros((N,N))
 
 ########################
 ## Define neuron params
 ########################
 
-gl = [0.1, 0.1]
-Cm = [1.0, 1.0]
-vlb = [-100.0, -100.0]
-vth = [30.0, 30.0]
-vl = [-72.0, -72.0]
-DeltaT = [1.4, 1.4]
-vT = [-48.0, -48.0]
-vre = [-72.0, -72.0]
-tref = [2.0, 2.0]
-tausyne = 5
-tausyni = 5
-tausynx = 5
+gl=[1/10, 1/10]
+Cm=[1.0, 1.0]
+vlb=[-100.0, -100.0]
+vth=[-10.0 ,-10.0]
+DeltaT=[2.0, 2.0]
+vT=[-50.0, -50.0]
+vl=[-60.0, -60.0]
+vre=[-65.0, -65.0]
+tref=[1.5, 1.5]
+tausyne=4.0
+tausyni=4.0
+tausynx=4.0
 
 ########################
 ## Define stim params
 ########################
 
-taux = 200
-mxe = 2
-mxi = 2
-vxe = 81
-vxi = 81
-
+taux = 40
+mxe = mxi = 2
+vxe = vxi = 81
 mxe0 = mxe
 mxi0 = mxi
 
@@ -78,13 +65,15 @@ mxi0 = mxi
 ## Define corr params
 ########################
 
-Tmax = 0.1 #max time lag for cross-correlations (s))
+Tmax = 50 #max time lag for cross-correlations (ms)
+cc_dt = 1 #resolution for cross correlations (ms)
 u1 = 1
-df = 50
-fmax = 1/(2*dt*1e-3) #nyquist (folding) frequency (Hz)
-freq = np.arange(0, 2*fmax, df)
-# idx = np.argwhere(np.abs(freq) < 1e-6)
-# freq[idx] = 1e-6
+
+df = 1/(2*Tmax)
+fmax = 1/(2*cc_dt)
+freq = np.arange(-fmax, fmax, df)
+idx = np.argwhere(np.abs(freq) < 1e-6)
+freq[idx] = 1e-6
 freq = freq.tolist()
 nfreq = len(freq)
 
@@ -130,6 +119,6 @@ params = {
 
 }
 
-np.savez_compressed(save_dir + 'mc_eif_rand_weights', net)
+np.savez_compressed(save_dir + 'mc_eif_ucpld_weights', net)
 with open(save_dir + 'params.json', 'w') as fp:
     json.dump(params, fp)

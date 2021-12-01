@@ -139,6 +139,85 @@ class ExInEIF_Fixed(RNN):
         self.ffwd.append(ffwd)
         self.spikes.append(trial_spikes)
 
+
+class ExInEIF_Dec(RNN):
+
+    def __init__(self,N,trials,Nrecord,T,Nt,N_e,N_i,q,dt,taux,
+                 tausyne,tausyni,tausynx,maxns,gl,Cm,vlb,vth,
+                 DeltaT,vT,vl,vre,tref):
+
+        """
+        Wrapper object for exponential integrate-and-fire (EIF) RNN in C
+        Parameters
+        ----------
+        See comments below
+        """
+
+        super(ExInEIF_Dec, self).__init__(N, T, dt, trials, Nrecord)
+        self.V = []; self.I_e = []; self.I_i = []; self.spikes = []
+
+        #Excitatory-inhibitory params
+        self.N_e = N_e #number of excitatory neurons
+        self.N_i = N_i #number of inhibitory neurons
+        self.q = q #Fraction of neurons that are excitatory
+        self.maxns=maxns #maximum number of spikes in a simulation
+
+        #Neuron params
+        self.tausyne=tausyne #time constant for epsp
+        self.tausyni=tausyni #time constant for ipsp
+        self.tausynx=tausynx #time constant for external psp (if input is spikes)
+        self.taux=taux
+
+        self.gl=gl #leak conductance
+        self.Cm=Cm #membrane capacitance
+        self.vlb=vlb #lower bound on the voltage
+        self.vth=vth #threshold
+        self.DeltaT=DeltaT #sharpness of AP generation
+        self.vT=vT #intrinsic membrane threshold
+        self.vl=vl #reversal potential for leak
+        self.vre=vre #resting potential
+        self.tref=tref #duration of the refractory period
+
+    def call(self, v0, net, ffwd):
+
+        #Construct parameter list for call to C backend
+
+        net = list(net.T.flatten()) #transpose for column-wise order
+        ffwd_ls = list(ffwd.flatten())
+        self.ffwd = ffwd
+
+        params = [self.N,self.Nrecord,self.T,self.Nt,self.N_e,self.N_i,self.q,
+        self.dt,self.taux,self.tausyne,self.tausyni,self.tausynx,self.maxns,
+        self.gl,self.Cm,self.vlb,self.vth,self.DeltaT,
+        self.vT,self.vl,self.vre,self.tref,self.Nrecord,self.Irecord,v0,net,ffwd_ls]
+
+        for i in range(self.trials):
+            ctup = hebb_backend.mc_eif_ucpld(params)
+            self.add_trial(ctup)
+
+        self.V = np.array(self.V)
+        self.V = np.swapaxes(np.swapaxes(self.V,1,2),0,1)
+        self.I_e = np.swapaxes(np.swapaxes(self.I_e,1,2),0,1)
+        self.I_i = np.swapaxes(np.swapaxes(self.I_i,1,2),0,1)
+        self.spikes = np.swapaxes(self.spikes,0,1)
+
+    def add_trial(self, tup):
+
+        s, v, i_e, i_i, i_x = tup
+
+        nspikes_record = self.Nrecord #not recording spikes from same neurons as currents
+        trial_spikes = np.zeros((nspikes_record, self.Nt), dtype=np.bool)
+        for unit in range(nspikes_record):
+            slice = s[s[:,1] == unit]
+            spike_times = slice[:,0]
+            for time in spike_times:
+                trial_spikes[unit,int(round(time/self.dt))] = 1
+
+        self.V.append(v)
+        self.I_e.append(i_e)
+        self.I_i.append(i_i)
+        self.spikes.append(trial_spikes)
+
 class ExInEIF_Rand(RNN):
 
     def __init__(self,N,trials,Nrecord,T,Nt,N_e,N_i,q,dt,taux,
@@ -224,43 +303,43 @@ class ExInEIF_Rand(RNN):
         self.ffwd.append(ffwd)
         self.spikes.append(trial_spikes)
 
-# class RNN:
-#
-#     def __init__(self, T, dt, tau_ref, J, trials=1, dtype=np.float32):
-#
-#         """
-#
-#         RNN base class
-#
-#         Parameters
-#         ----------
-#
-#         T: float
-#             Total simulation time in seconds
-#         dt: float
-#             Time resolution in seconds
-#         tau_ref : float
-#             Refractory time in seconds
-#         J : 2D ndarray
-#             Synaptic connectivity matrix
-#         trials : int
-#             Number of stimulations to run
-#         dtype : numpy data type
-#             Data type to use for neuron state variables
-#
-#         """
-#
-#         #Basic parameters common to all neurons
-#         self.dt = dt #time resolution
-#         self.T = T #simulation period
-#         self.trials = trials #number of trials
-#         self.tau_ref = tau_ref #refractory period
-#         self.nsteps = 1 + int(round((self.T/dt))) #number of 'cuts'
-#         self.ref_steps = int(self.tau_ref/self.dt) #number of steps for refractory period
-#         self.J = J #synaptic connectivity
-#         self.N = self.J.shape[0]
-#         self.dtype = dtype #data type
-#         self.shape = (self.N,self.trials,self.nsteps)
+class RNN:
+
+    def __init__(self, T, dt, tau_ref, J, trials=1, dtype=np.float32):
+
+        """
+
+        RNN base class
+
+        Parameters
+        ----------
+
+        T: float
+            Total simulation time in seconds
+        dt: float
+            Time resolution in seconds
+        tau_ref : float
+            Refractory time in seconds
+        J : 2D ndarray
+            Synaptic connectivity matrix
+        trials : int
+            Number of stimulations to run
+        dtype : numpy data type
+            Data type to use for neuron state variables
+
+        """
+
+        #Basic parameters common to all neurons
+        self.dt = dt #time resolution
+        self.T = T #simulation period
+        self.trials = trials #number of trials
+        self.tau_ref = tau_ref #refractory period
+        self.nsteps = 1 + int(round((self.T/dt))) #number of 'cuts'
+        self.ref_steps = int(self.tau_ref/self.dt) #number of steps for refractory period
+        self.J = J #synaptic connectivity
+        self.N = self.J.shape[0]
+        self.dtype = dtype #data type
+        self.shape = (self.N,self.trials,self.nsteps)
 
 # class ClampedLIF(RNN):
 #
