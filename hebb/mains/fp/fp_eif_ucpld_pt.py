@@ -5,9 +5,9 @@ import json
 from hebb.models import *
 
 ##################################################
-## Predicting spike train cross-correlations as
-## for excitatory-inhibitory random network
-## using the linear response approximation
+## Solve the Fokker-Planck equation for EIF 
+## model stimulated by a weak sinusoidal perturbation
+## and additive Gaussian white noise
 ##################################################
 ## Author: Clayton Seitz
 ## Copyright: 2021, The Hebb Project

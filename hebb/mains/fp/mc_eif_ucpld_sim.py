@@ -5,7 +5,7 @@ from hebb.util import *
 
 ##################################################
 ## Run a Monte Carlo simulation for
-## excitatory-inhibitory random network
+## an ensemble of EIF neurons stimulated by GWN
 ##################################################
 ## Author: Clayton Seitz
 ## Copyright: 2021, The Hebb Project
