@@ -86,7 +86,7 @@ for i, mu in enumerate(mu_arr):
     tup = hebb_backend.fp_eif(cell_prms + [mu,var,xi])
     P0,p0,J0,x0,r0 = tup
     params = cell_prms + [x0,mu,var,u1,r0,P0,xi,p0,freq,nfreq]
-    V1r,V1i,x1r,x1i,Ar,Ai,alpha,beta = hebb_backend.lr_eif(params)
+    V1r,V1i,x1r,x1i,Ar,Ai = hebb_backend.lr_eif(params)
     At = np.array(Ar) + np.array(Ai)*1j
     At_arr[i,:] = At
 
