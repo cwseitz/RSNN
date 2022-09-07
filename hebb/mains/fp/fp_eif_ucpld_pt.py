@@ -78,20 +78,32 @@ net = np.load(save_dir + 'mc_eif_ucpld_weights.npz')['arr_0']
 ##################################################
 
 #Solve Fokker-Planck for GWN
-M = 100
-mu_arr = np.linspace(0,5,M)
-At_arr = np.zeros((M,nfreq),dtype=np.cdouble)
+mu = 2.0
+tup = hebb_backend.fp_eif(cell_prms + [mu,var,xi])
+P0,p0,J0,x0,r0 = tup
+params = cell_prms + [x0,mu,var,u1,r0,P0,xi,p0,freq,nfreq]
+V1r,V1i,x1r,x1i,Ar,Ai = hebb_backend.lr_eif(params)
+Ar, Ai = np.array(Ar), np.array(Ai)
+mag = np.sqrt(Ar**2 + Ai**2)
+phase = np.arctan(Ai/Ar)
+freq = np.array(freq)
 
-for i, mu in enumerate(mu_arr):
-    tup = hebb_backend.fp_eif(cell_prms + [mu,var,xi])
-    P0,p0,J0,x0,r0 = tup
-    params = cell_prms + [x0,mu,var,u1,r0,P0,xi,p0,freq,nfreq]
-    V1r,V1i,x1r,x1i,Ar,Ai = hebb_backend.lr_eif(params)
-    At = np.array(Ar) + np.array(Ai)*1j
-    At_arr[i,:] = At
+##########################
+# Plot magnitude and phase
+##########################
 
-########################
-# Write objects to disk
-########################
+fig, ax = plt.subplots(1,2,figsize=(6,3))
+N = nfreq
+print(freq.shape, mag.shape)
+ax[0].plot(freq[N//2:],mag[N//2:],color='black')
+ax[0].set_xlabel('Frequency (kHz)')
+ax[0].set_ylabel('FR Magnitude')
 
-np.savez_compressed(save_dir + 'lr_eif_ucpld_At', At_arr)
+ax[1].set_xlabel('Frequency (kHz)')
+ax[1].set_ylabel('FR Phase (rad)')
+ax[1].plot(freq[N//2:],phase[N//2:],color='black')
+
+plt.tight_layout()
+plt.show()
+
+

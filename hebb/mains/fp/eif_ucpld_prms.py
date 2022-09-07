@@ -67,9 +67,7 @@ mxi0 = mxi
 
 Tmax = 50 #max time lag for cross-correlations (ms)
 cc_dt = 1 #resolution for cross correlations (ms)
-u1 = 1
-
-df = 1/(2*Tmax)
+df = 1/(2*Tmax) #frequency resolution
 fmax = 1/(2*cc_dt)
 freq = np.arange(-fmax, fmax, df)
 idx = np.argwhere(np.abs(freq) < 1e-6)
